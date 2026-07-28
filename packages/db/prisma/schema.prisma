@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkoutType {
+  RUN
+  LIFT
+  BIKE
+  REST
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainingPlans TrainingPlan[]
+  sessionLogs   SessionLog[]
+}
+
+model TrainingPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  raceDate  DateTime
+  startDate DateTime
+  // weekly lift/bike day counts, injury flags, etc. Shape owned by the
+  // plan-generation module (see DECISIONS.md) — Json until that settles.
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannedWorkouts  PlannedWorkout[]
+
+  @@index([userId])
+}
+
+model PlannedWorkout {
+  id         String      @id @default(cuid())
+  planId     String
+  weekNumber Int
+  day        DayOfWeek
+  type       WorkoutType
+  // free text or structured detail, depending on workout type
+  prescription Json
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  plan        TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sessionLogs SessionLog[]
+
+  @@index([planId])
+}
+
+model SessionLog {
+  id               String      @id @default(cuid())
+  userId           String
+  plannedWorkoutId String?
+  date             DateTime
+  type             WorkoutType
+  distanceMiles    Float?
+  durationMin      Int
+  rpe              Int
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannedWorkout PlannedWorkout? @relation(fields: [plannedWorkoutId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([plannedWorkoutId])
+}
