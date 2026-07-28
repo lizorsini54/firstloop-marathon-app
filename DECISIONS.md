@@ -31,3 +31,9 @@ Architecture and scope decisions, in the order they were made. Two lines each: w
 **`me` procedure returns only the Clerk `userId`, no DB lookup**: syncing Clerk users into the `User` table (get-or-create by `clerkId`) happens naturally in Checkpoint 3 when `createPlan` first needs a real `userId` FK — doing it now would be speculative.
 
 **`react-router-dom` for client-side routing**: introduced now because a public `/` vs. protected `/dashboard` split needs distinct URLs, and Checkpoint 3 adds more pages regardless.
+
+**`db:deploy` script instead of `bunx prisma migrate deploy`**: `bunx prisma` from the repo root fetched a fresh latest Prisma (v7, breaking schema-format change) rather than the workspace's pinned v6 devDependency. `bun run --filter '@firstloop/db' db:deploy` resolves the local pinned binary correctly.
+
+**Prisma migration runs at server *start*, not Railway's build step**: Railway's build containers can't reach `*.railway.internal` hostnames — that private network is only available to running/deployed services. `prisma migrate deploy` is chained into the server's start command instead; it's idempotent (no-ops with no pending migrations), so this is safe on every deploy.
+
+**Server listens on `PORT` (Railway's convention) falling back to `SERVER_PORT`**: added `PORT` as an optional env var that wins when present; `SERVER_PORT` stays the local-only default so it doesn't collide with tooling that injects its own `PORT` for local preview.
