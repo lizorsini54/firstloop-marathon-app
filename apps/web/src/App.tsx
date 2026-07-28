@@ -2,9 +2,12 @@ import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AppShell } from "./components/AppShell";
 import { setClerkTokenGetter } from "./lib/orpc";
 import { Dashboard } from "./pages/Dashboard";
 import { Home } from "./pages/Home";
+import { Intake } from "./pages/Intake";
+import { LogSession } from "./pages/LogSession";
 
 function ClerkTokenBridge() {
   const { getToken } = useAuth();
@@ -19,7 +22,9 @@ function ClerkTokenBridge() {
 function RequireAuth({ children }: { children: ReactNode }) {
   return (
     <>
-      <SignedIn>{children}</SignedIn>
+      <SignedIn>
+        <AppShell>{children}</AppShell>
+      </SignedIn>
       <SignedOut>
         <Navigate to="/" replace />
       </SignedOut>
@@ -38,6 +43,22 @@ export function App() {
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/intake"
+          element={
+            <RequireAuth>
+              <Intake />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/log"
+          element={
+            <RequireAuth>
+              <LogSession />
             </RequireAuth>
           }
         />
