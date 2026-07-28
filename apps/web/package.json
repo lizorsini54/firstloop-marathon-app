@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.25.0",
     "@firstloop/contracts": "workspace:*",
     "@orpc/client": "^1.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.5"
   },
   "devDependencies": {
     "@orpc/server": "^1.0.0",
