@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch --env-file=../../.env src/index.ts",
-    "start": "bun --env-file=../../.env src/index.ts"
+    "start": "bun src/index.ts"
   },
   "dependencies": {
     "@clerk/express": "^1.4.0",
