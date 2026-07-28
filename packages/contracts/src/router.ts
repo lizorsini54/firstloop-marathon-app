@@ -14,6 +14,16 @@ import { logSessionInputSchema, logSessionOutputSchema } from "./schemas/session
 
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * Midnight UTC of the given date. Plan start dates need to align with
+ * session log dates (which come from a plain <input type="date">, parsed
+ * as midnight UTC) — otherwise a session logged "today" can fall before
+ * a same-day plan's startDate and silently drop out of "this week."
+ */
+function startOfUTCDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
 const ping = publicProcedure
   .input(pingInputSchema)
   .output(pingOutputSchema)
@@ -33,7 +43,7 @@ const createPlan = protectedProcedure
   .output(createPlanOutputSchema)
   .handler(async ({ input, context }) => {
     const user = await getOrCreateUser(context.auth.userId);
-    const startDate = new Date();
+    const startDate = startOfUTCDay(new Date());
 
     const { totalWeeks, workouts, warnings } = generatePlan({
       raceDate: input.raceDate,
