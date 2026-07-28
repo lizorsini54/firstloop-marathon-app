@@ -5,6 +5,7 @@
     "apps/server": {},
     "apps/web": {},
     "packages/contracts": {},
-    "packages/db": {}
+    "packages/db": {},
+    "packages/plan-engine": {}
   }
 }
