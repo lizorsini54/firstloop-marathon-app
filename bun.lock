@@ -72,6 +72,13 @@
         "prisma": "^6.3.1",
       },
     },
+    "packages/plan-engine": {
+      "name": "@firstloop/plan-engine",
+      "version": "0.0.0",
+      "dependencies": {
+        "@firstloop/db": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
@@ -201,6 +208,8 @@
     "@firstloop/contracts": ["@firstloop/contracts@workspace:packages/contracts"],
 
     "@firstloop/db": ["@firstloop/db@workspace:packages/db"],
+
+    "@firstloop/plan-engine": ["@firstloop/plan-engine@workspace:packages/plan-engine"],
 
     "@firstloop/server": ["@firstloop/server@workspace:apps/server"],
 
