@@ -14,7 +14,7 @@ const LIFT_CANDIDATE_DAYS: DayOfWeek[] = [
   DayOfWeek.FRIDAY,
   DayOfWeek.SATURDAY,
 ];
-const ALL_DAYS: DayOfWeek[] = [
+export const WEEK_DAY_ORDER: DayOfWeek[] = [
   DayOfWeek.MONDAY,
   DayOfWeek.TUESDAY,
   DayOfWeek.WEDNESDAY,
@@ -118,12 +118,12 @@ function workoutsForWeek(
     });
   });
 
-  const bikeDays = ALL_DAYS.filter((d) => !used.has(d)).slice(0, intake.bikeDaysPerWeek);
+  const bikeDays = WEEK_DAY_ORDER.filter((d) => !used.has(d)).slice(0, intake.bikeDaysPerWeek);
   bikeDays.forEach((day) => {
     make(day, WorkoutType.BIKE, { durationMin: 45, notes: "Cross-training ride" });
   });
 
-  const restDays = ALL_DAYS.filter((d) => !used.has(d));
+  const restDays = WEEK_DAY_ORDER.filter((d) => !used.has(d));
   restDays.forEach((day) => {
     make(day, WorkoutType.REST, {});
   });
