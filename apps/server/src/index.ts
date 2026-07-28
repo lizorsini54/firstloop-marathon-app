@@ -8,7 +8,12 @@ import { env } from "./env";
 
 const app = express();
 app.use(cors({ origin: env.WEB_ORIGIN }));
-app.use(clerkMiddleware({ secretKey: env.CLERK_SECRET_KEY }));
+app.use(
+  clerkMiddleware({
+    secretKey: env.CLERK_SECRET_KEY,
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+  }),
+);
 
 const handler = new RPCHandler(router);
 
