@@ -33,6 +33,6 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(env.SERVER_PORT, () => {
-  console.log(`server listening on http://localhost:${env.SERVER_PORT}`);
+app.listen(env.PORT, () => {
+  console.log(`server listening on http://localhost:${env.PORT}`);
 });
