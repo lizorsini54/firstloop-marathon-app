@@ -37,3 +37,15 @@ Architecture and scope decisions, in the order they were made. Two lines each: w
 **Prisma migration runs at server *start*, not Railway's build step**: Railway's build containers can't reach `*.railway.internal` hostnames — that private network is only available to running/deployed services. `prisma migrate deploy` is chained into the server's start command instead; it's idempotent (no-ops with no pending migrations), so this is safe on every deploy.
 
 **Server listens on `PORT` (Railway's convention) falling back to `SERVER_PORT`**: added `PORT` as an optional env var that wins when present; `SERVER_PORT` stays the local-only default so it doesn't collide with tooling that injects its own `PORT` for local preview.
+
+## Checkpoint 3
+
+**Persistent nav shell (`AppShell`) added ahead of schedule**: discussed with the user before building — a public `/` vs. protected pages already needed structure, and future sections (nutrition, strength tracking) the user wants to add later get a slot to land in without a nav restructure. Cheap now, disruptive later.
+
+**`packages/plan-engine` has zero dependencies, not even on `@firstloop/db`**: originally imported Prisma's `DayOfWeek`/`WorkoutType` enums for convenience. Adding the seed script (which needs both Prisma writes and `generatePlan()`) would have made that a circular workspace dependency (`db → plan-engine → db`). Fixed by having plan-engine define its own string-literal-union types that mirror the Prisma enums by value — genuinely standalone now, matching what "swappable module" was supposed to mean in the first place.
+
+**One active plan per user, most-recent-wins**: `getDashboard`/`createPlan` don't do multi-plan selection UI. `TrainingPlan` is still one-to-many from `User` in the schema, so old plans aren't lost — just not surfaced yet. Simplest thing that works for a single-plan-at-a-time product today.
+
+**Plan `startDate` truncated to midnight UTC at creation**: found via manual testing — `new Date()` (with time-of-day) as `startDate` combined with midnight-aligned session-log dates (from a plain `<input type="date">`) meant a session logged on a plan's creation day could fall *before* that plan's own week boundary and silently vanish from "this week." Both now align to day boundaries.
+
+**Seed script hardcodes the demo user's email instead of calling Clerk's API**: avoids `packages/db` needing `@clerk/express`/`CLERK_SECRET_KEY` just to run a one-off script — the real `getOrCreateUser` path (used by every actual request) still fetches the authoritative email from Clerk on first real login.

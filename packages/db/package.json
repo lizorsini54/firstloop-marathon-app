@@ -10,9 +10,11 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "bun --env-file=../../.env prisma/seed.ts"
   },
   "dependencies": {
+    "@firstloop/plan-engine": "workspace:*",
     "@prisma/client": "^6.3.1"
   },
   "devDependencies": {

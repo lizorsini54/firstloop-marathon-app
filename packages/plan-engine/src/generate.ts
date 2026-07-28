@@ -1,27 +1,27 @@
-import { DayOfWeek, WorkoutType } from "@firstloop/db";
 import { computePhaseBoundaries, phaseForWeek } from "./phases";
-import type { GeneratedPlan, GeneratedWorkout, PlanIntake, WorkoutPrescription } from "./types";
+import type {
+  DayOfWeek,
+  GeneratedPlan,
+  GeneratedWorkout,
+  PlanIntake,
+  WorkoutPrescription,
+  WorkoutType,
+} from "./types";
 
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 const MIN_TOTAL_WEEKS = 4;
 
-const LONG_RUN_DAY = DayOfWeek.SUNDAY;
-const QUALITY_DAYS: DayOfWeek[] = [DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY];
-const LIFT_CANDIDATE_DAYS: DayOfWeek[] = [
-  DayOfWeek.MONDAY,
-  DayOfWeek.TUESDAY,
-  DayOfWeek.THURSDAY,
-  DayOfWeek.FRIDAY,
-  DayOfWeek.SATURDAY,
-];
+const LONG_RUN_DAY: DayOfWeek = "SUNDAY";
+const QUALITY_DAYS: DayOfWeek[] = ["WEDNESDAY", "FRIDAY"];
+const LIFT_CANDIDATE_DAYS: DayOfWeek[] = ["MONDAY", "TUESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 export const WEEK_DAY_ORDER: DayOfWeek[] = [
-  DayOfWeek.MONDAY,
-  DayOfWeek.TUESDAY,
-  DayOfWeek.WEDNESDAY,
-  DayOfWeek.THURSDAY,
-  DayOfWeek.FRIDAY,
-  DayOfWeek.SATURDAY,
-  DayOfWeek.SUNDAY,
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
 ];
 
 const PEAK_LONG_RUN_MILES = 19;
@@ -90,7 +90,7 @@ function workoutsForWeek(
     workouts.push({ weekNumber, day, type, prescription });
   };
 
-  make(LONG_RUN_DAY, WorkoutType.RUN, {
+  make(LONG_RUN_DAY, "RUN", {
     distanceMiles: longRunMiles(weekNumber, phase, boundaries, startingLongRun, peakTarget),
     quality: "long",
   });
@@ -99,7 +99,7 @@ function workoutsForWeek(
   for (let i = 0; i < qualityDayCount; i++) {
     const day = QUALITY_DAYS[i];
     if (!day) continue;
-    make(day, WorkoutType.RUN, {
+    make(day, "RUN", {
       quality: i === 0 ? "tempo" : "intervals",
       durationMin: phase === "peak" ? 45 : 40,
       notes: i === 0 ? "Tempo run" : "Interval session",
@@ -112,7 +112,7 @@ function workoutsForWeek(
   );
   liftDays.forEach((day, i) => {
     const reduced = phase === "build" && i === 0;
-    make(day, WorkoutType.LIFT, {
+    make(day, "LIFT", {
       reducedVolume: reduced,
       notes: reduced ? "Lift session (reduced volume — long run week)" : "Lift session",
     });
@@ -120,12 +120,12 @@ function workoutsForWeek(
 
   const bikeDays = WEEK_DAY_ORDER.filter((d) => !used.has(d)).slice(0, intake.bikeDaysPerWeek);
   bikeDays.forEach((day) => {
-    make(day, WorkoutType.BIKE, { durationMin: 45, notes: "Cross-training ride" });
+    make(day, "BIKE", { durationMin: 45, notes: "Cross-training ride" });
   });
 
   const restDays = WEEK_DAY_ORDER.filter((d) => !used.has(d));
   restDays.forEach((day) => {
-    make(day, WorkoutType.REST, {});
+    make(day, "REST", {});
   });
 
   return workouts;
