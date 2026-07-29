@@ -24,7 +24,10 @@ const prescriptionSchema = z.object({
   exercises: z.array(strengthExerciseSchema).optional(),
 });
 
-const plannedWorkoutSchema = z.object({
+// Exported (not module-private) so other output schemas needing the same
+// per-workout shape — e.g. schemas/overview.ts's full plan view — reuse it
+// instead of redefining it.
+export const plannedWorkoutSchema = z.object({
   id: z.string(),
   day: dayOfWeekSchema,
   type: workoutTypeSchema,
@@ -49,18 +52,20 @@ const weeklyMileageSchema = z.object({
   actualMiles: z.number(),
 });
 
+// Shared plan-meta shape — same fields getDashboard and getPlanOverview
+// both compute per plan (see router.ts's computePlanMeta helper).
+export const planMetaSchema = z.object({
+  id: z.string(),
+  raceDate: z.date(),
+  startDate: z.date(),
+  totalWeeks: z.number().int(),
+  currentWeek: z.number().int(),
+  phase: z.enum(["base", "build", "peak", "taper"]),
+  feasibilityWarning: z.string().nullable(),
+});
+
 export const dashboardOutputSchema = z.object({
-  plan: z
-    .object({
-      id: z.string(),
-      raceDate: z.date(),
-      startDate: z.date(),
-      totalWeeks: z.number().int(),
-      currentWeek: z.number().int(),
-      phase: z.enum(["base", "build", "peak", "taper"]),
-      feasibilityWarning: z.string().nullable(),
-    })
-    .nullable(),
+  plan: planMetaSchema.nullable(),
   plannedWorkouts: z.array(plannedWorkoutSchema),
   sessionLogs: z.array(sessionLogSchema),
   weeklyMileageTotal: z.number(),

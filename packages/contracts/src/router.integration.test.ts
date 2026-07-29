@@ -214,3 +214,48 @@ describe("createPlan strengthMode", () => {
     expect(dashboard.plannedWorkouts.some((w) => w.type === "LIFT")).toBe(false);
   });
 });
+
+describe("getPlanOverview", () => {
+  test("returns every PlannedWorkout row for the active plan, grouped by week", async () => {
+    const clerkId = "clerk_test_plan_overview";
+    const created = await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
+        strengthMode: "program",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const overview = await call(router.getPlanOverview, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    expect(overview.plan?.id).toBe(created.planId);
+    expect(overview.weeks).toHaveLength(created.totalWeeks);
+
+    const week1 = overview.weeks.find((w) => w.weekNumber === 1);
+    expect(week1?.workouts).toHaveLength(7);
+
+    const allWorkouts = overview.weeks.flatMap((w) => w.workouts);
+    expect(allWorkouts.some((w) => w.type === "RUN" && w.prescription.quality === "long")).toBe(true);
+    // Program mode was requested, so LIFT rows (Glute Gladiator) should show
+    // up somewhere across the plan, same as running does.
+    expect(allWorkouts.some((w) => w.type === "LIFT")).toBe(true);
+  });
+
+  test("returns an empty overview when the user has no plan yet", async () => {
+    const clerkId = "clerk_test_plan_overview_none";
+    const overview = await call(router.getPlanOverview, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    expect(overview.plan).toBeNull();
+    expect(overview.weeks).toEqual([]);
+  });
+});
