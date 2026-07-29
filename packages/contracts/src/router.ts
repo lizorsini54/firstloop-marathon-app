@@ -1,6 +1,13 @@
 import { prisma } from "@firstloop/db";
 import type { Prisma } from "@firstloop/db";
-import { computePhaseBoundaries, generatePlan, phaseForWeek, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
+import {
+  checkFeasibility,
+  computePhaseBoundaries,
+  estimateAvailableWeeks,
+  generatePlan,
+  phaseForWeek,
+  WEEK_DAY_ORDER,
+} from "@firstloop/plan-engine";
 import type { WorkoutPrescription } from "@firstloop/plan-engine";
 import { buildCustomProgram, gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
 import type { GeneratedStrengthWorkout, WeekContext } from "@firstloop/strength-engine";
@@ -13,6 +20,7 @@ import { getSessionHistoryOutputSchema } from "./schemas/history";
 import { meOutputSchema } from "./schemas/me";
 import { pingInputSchema, pingOutputSchema } from "./schemas/ping";
 import { createPlanInputSchema, createPlanOutputSchema } from "./schemas/plan";
+import { getRunningProgressOutputSchema } from "./schemas/progress";
 import { logSessionInputSchema, logSessionOutputSchema } from "./schemas/session";
 import type { SetLogEntry } from "./schemas/session";
 
@@ -26,6 +34,15 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
  */
 function startOfUTCDay(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** Monday (UTC) of the week containing d — the bucketing key for weekly running progress. */
+function startOfWeekUTC(d: Date): Date {
+  const day = d.getUTCDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const start = startOfUTCDay(d);
+  start.setUTCDate(start.getUTCDate() - diffToMonday);
+  return start;
 }
 
 const ping = publicProcedure
@@ -53,9 +70,16 @@ const createPlan = protectedProcedure
       raceDate: input.raceDate,
       startDate,
       currentWeeklyMileage: input.currentWeeklyMileage,
+      runningExperience: input.runningExperience,
+      runningDaysPerWeek: input.runningDaysPerWeek,
       bikeDaysPerWeek: input.bikeDaysPerWeek,
       injuryFlags: input.injuryFlags,
     });
+
+    const { warning: feasibilityWarning } = checkFeasibility(
+      estimateAvailableWeeks(input.raceDate, startDate),
+      input.runningExperience,
+    );
 
     // Strength sessions are scheduled around the running plan's fixed days:
     // REST-day placeholders become the strength scheduler's available slots
@@ -104,10 +128,13 @@ const createPlan = protectedProcedure
           startDate,
           config: {
             currentWeeklyMileage: input.currentWeeklyMileage,
+            runningExperience: input.runningExperience,
+            runningDaysPerWeek: input.runningDaysPerWeek,
             strengthMode: input.strengthMode,
             customLiftDaysPerWeek: input.customLiftDaysPerWeek,
             bikeDaysPerWeek: input.bikeDaysPerWeek,
             injuryFlags: input.injuryFlags,
+            feasibilityWarning,
           },
         },
       });
@@ -184,6 +211,47 @@ const getSessionHistory = protectedProcedure
         setLog: s.setLog as SetLogEntry[] | null,
       })),
     };
+  });
+
+const getRunningProgress = protectedProcedure
+  .input(z.void())
+  .output(getRunningProgressOutputSchema)
+  .handler(async ({ context }) => {
+    const user = await getOrCreateUser(context.auth.userId);
+
+    // All logged history, not scoped to the current plan — a runner's
+    // running history can span more than one plan.
+    const runLogs = await prisma.sessionLog.findMany({
+      where: { userId: user.id, type: "RUN" },
+      orderBy: { date: "asc" },
+    });
+
+    const buckets = new Map<
+      string,
+      { weekStart: Date; totalMiles: number; pacedDurationMin: number; pacedMiles: number }
+    >();
+
+    for (const log of runLogs) {
+      const weekStart = startOfWeekUTC(log.date);
+      const key = weekStart.toISOString();
+      const bucket = buckets.get(key) ?? { weekStart, totalMiles: 0, pacedDurationMin: 0, pacedMiles: 0 };
+      bucket.totalMiles += log.distanceMiles ?? 0;
+      if (log.distanceMiles) {
+        bucket.pacedDurationMin += log.durationMin;
+        bucket.pacedMiles += log.distanceMiles;
+      }
+      buckets.set(key, bucket);
+    }
+
+    const weeks = Array.from(buckets.values())
+      .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+      .map((b) => ({
+        weekStart: b.weekStart,
+        totalMiles: b.totalMiles,
+        averagePaceMinPerMile: b.pacedMiles > 0 ? b.pacedDurationMin / b.pacedMiles : null,
+      }));
+
+    return { weeks };
   });
 
 const emptyDashboard: DashboardOutput = {
@@ -264,8 +332,18 @@ const getDashboard = protectedProcedure
       };
     });
 
+    const config = plan.config as { feasibilityWarning?: string | null } | null;
+
     return {
-      plan: { id: plan.id, raceDate: plan.raceDate, startDate: plan.startDate, totalWeeks, currentWeek, phase },
+      plan: {
+        id: plan.id,
+        raceDate: plan.raceDate,
+        startDate: plan.startDate,
+        totalWeeks,
+        currentWeek,
+        phase,
+        feasibilityWarning: config?.feasibilityWarning ?? null,
+      },
       plannedWorkouts: plannedWorkouts.map((w) => ({
         id: w.id,
         day: w.day,
@@ -295,6 +373,7 @@ export const router = {
   logSession,
   getDashboard,
   getSessionHistory,
+  getRunningProgress,
 };
 
 export type AppRouter = typeof router;
