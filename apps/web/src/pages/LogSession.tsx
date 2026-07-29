@@ -21,7 +21,11 @@ type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error:
 
 type LinkedExercise = { name: string; setsReps: string; isMainLift?: boolean; notes?: string };
 type LinkedPrescription = { displayName?: string; block?: string; exercises?: LinkedExercise[] };
-type LogSessionNavState = { plannedWorkoutId?: string; prescription?: LinkedPrescription };
+type LogSessionNavState = {
+  plannedWorkoutId?: string;
+  type?: WorkoutType;
+  prescription?: LinkedPrescription;
+};
 
 type SetEntry = { reps: string; weightLbs: string };
 type ExerciseLog = { exercise: string; sets: SetEntry[] };
@@ -58,7 +62,7 @@ export function LogSession() {
   const isStructuredLift = Boolean(linkedExercises && linkedExercises.length > 0);
 
   const [date, setDate] = useState(today);
-  const [type, setType] = useState<WorkoutType>(isStructuredLift ? "LIFT" : "RUN");
+  const [type, setType] = useState<WorkoutType>(navState?.type ?? "RUN");
   const [distanceMiles, setDistanceMiles] = useState("");
   const [durationMin, setDurationMin] = useState("");
   const [rpe, setRpe] = useState("5");

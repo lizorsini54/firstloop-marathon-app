@@ -24,9 +24,14 @@ const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text
 function describePrescription(
   p: DashboardOutput["plannedWorkouts"][number]["prescription"],
 ): string {
-  if (p.exercises) {
+  if (p.exercises && p.exercises.length > 0) {
     const parts = [p.displayName, p.block ? `${p.block} block` : undefined, `${p.exercises.length} exercises`];
     return parts.filter(Boolean).join(" · ");
+  }
+  if (p.displayName) {
+    // A custom lift session with no prescribed exercises — real data, just
+    // nothing to enumerate, not a placeholder.
+    return p.displayName;
   }
   const parts: string[] = [];
   if (p.distanceMiles) parts.push(`${p.distanceMiles}mi`);
@@ -123,7 +128,7 @@ export function Dashboard() {
                   type="button"
                   onClick={() => {
                     void navigate("/log", {
-                      state: { plannedWorkoutId: w.id, prescription: w.prescription },
+                      state: { plannedWorkoutId: w.id, type: w.type, prescription: w.prescription },
                     });
                   }}
                   className="rounded-sm text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
