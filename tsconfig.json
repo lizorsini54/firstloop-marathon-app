@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/db" },
+    { "path": "./packages/scheduling" },
     { "path": "./packages/plan-engine" },
     { "path": "./packages/strength-engine" },
     { "path": "./packages/contracts" },

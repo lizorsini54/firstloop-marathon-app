@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 export const strengthModeSchema = z.enum(["program", "custom", "none"]);
+export const runningExperienceSchema = z.enum(["first_marathon", "has_finished_one"]);
 
 export const createPlanInputSchema = z
   .object({
     raceDate: z.coerce.date(),
     currentWeeklyMileage: z.number().positive(),
+    runningExperience: runningExperienceSchema,
+    runningDaysPerWeek: z.number().int().min(1).max(7),
     strengthMode: strengthModeSchema,
     customLiftDaysPerWeek: z.number().int().min(1).max(4).optional(),
     bikeDaysPerWeek: z.number().int().min(0).max(7),

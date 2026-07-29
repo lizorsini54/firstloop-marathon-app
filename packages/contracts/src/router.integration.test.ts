@@ -79,6 +79,8 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
         strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
@@ -102,6 +104,8 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 15,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
         strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
@@ -124,6 +128,8 @@ describe("createPlan -> logSession", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
         strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
@@ -164,6 +170,8 @@ describe("createPlan strengthMode", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
         strengthMode: "custom",
         customLiftDaysPerWeek: 2,
         bikeDaysPerWeek: 0,
@@ -190,6 +198,8 @@ describe("createPlan strengthMode", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
         strengthMode: "none",
         bikeDaysPerWeek: 0,
         injuryFlags: [],

@@ -94,10 +94,20 @@
     "packages/plan-engine": {
       "name": "@firstloop/plan-engine",
       "version": "0.0.0",
+      "dependencies": {
+        "@firstloop/scheduling": "workspace:*",
+      },
+    },
+    "packages/scheduling": {
+      "name": "@firstloop/scheduling",
+      "version": "0.0.0",
     },
     "packages/strength-engine": {
       "name": "@firstloop/strength-engine",
       "version": "0.0.0",
+      "dependencies": {
+        "@firstloop/scheduling": "workspace:*",
+      },
     },
   },
   "packages": {
@@ -234,6 +244,8 @@
     "@firstloop/db": ["@firstloop/db@workspace:packages/db"],
 
     "@firstloop/plan-engine": ["@firstloop/plan-engine@workspace:packages/plan-engine"],
+
+    "@firstloop/scheduling": ["@firstloop/scheduling@workspace:packages/scheduling"],
 
     "@firstloop/server": ["@firstloop/server@workspace:apps/server"],
 

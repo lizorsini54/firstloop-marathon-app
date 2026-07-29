@@ -58,6 +58,7 @@ export const dashboardOutputSchema = z.object({
       totalWeeks: z.number().int(),
       currentWeek: z.number().int(),
       phase: z.enum(["base", "build", "peak", "taper"]),
+      feasibilityWarning: z.string().nullable(),
     })
     .nullable(),
   plannedWorkouts: z.array(plannedWorkoutSchema),

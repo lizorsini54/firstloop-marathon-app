@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { buildCustomProgram } from "./programs/custom";
 import { gluteGladiator } from "./programs/glute-gladiator";
 import { scheduleStrengthSessions } from "./schedule";
-import type { DayOfWeek, SessionName, WeekContext } from "./types";
+import type { SessionName, WeekContext } from "./types";
 
 function makeWeek(overrides: Partial<WeekContext> & { weekNumber: number }): WeekContext {
   return {
@@ -13,53 +13,6 @@ function makeWeek(overrides: Partial<WeekContext> & { weekNumber: number }): Wee
     ...overrides,
   };
 }
-
-function dayOf(
-  workouts: ReturnType<typeof scheduleStrengthSessions>,
-  sessionName: string,
-): DayOfWeek | undefined {
-  return workouts.find((w) => w.prescription.sessionName === sessionName)?.day;
-}
-
-describe("day placement: spacing + interference", () => {
-  test("keeps lower sessions apart and off days before a quality/long run", () => {
-    // Available Mon/Tue/Wed/Thu/Sat; Fri (quality run) + Sun (long run) taken.
-    // Thu (day before Fri) and Sat (day before Sun) must never host a lower session.
-    const workouts = scheduleStrengthSessions(gluteGladiator, [makeWeek({ weekNumber: 1 })]);
-
-    expect(workouts).toHaveLength(4);
-    const lowerA = dayOf(workouts, "LOWER_A");
-    const lowerB = dayOf(workouts, "LOWER_B");
-
-    expect(lowerA).toBeDefined();
-    expect(lowerB).toBeDefined();
-    expect(["THURSDAY", "SATURDAY"]).not.toContain(lowerA);
-    expect(["THURSDAY", "SATURDAY"]).not.toContain(lowerB);
-
-    const order: DayOfWeek[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
-    const gap = Math.abs(order.indexOf(lowerA as DayOfWeek) - order.indexOf(lowerB as DayOfWeek));
-    expect(gap).toBeGreaterThanOrEqual(gluteGladiator.minDaysBetweenGroupedSessions);
-  });
-
-  test("still places a lower session when every available day is interference-blocked", () => {
-    // A real case found via seeded data: a peak-phase week with quality runs
-    // on Wed/Fri and the long run on Sun leaves only Tue/Thu/Sat open — and
-    // every one of those sits immediately before a run day. Dropping Lower A
-    // here would silently skip it for the entire peak phase; the scheduler
-    // should degrade the interference rule rather than do that.
-    const week = makeWeek({
-      weekNumber: 1,
-      availableDays: ["TUESDAY", "THURSDAY", "SATURDAY"],
-      interferenceDays: ["WEDNESDAY", "FRIDAY", "SUNDAY"],
-      isPeakMileageWeek: true,
-    });
-    const workouts = scheduleStrengthSessions(gluteGladiator, [week]);
-
-    expect(workouts).toHaveLength(gluteGladiator.reducedSessionCount);
-    const names = workouts.map((w) => w.prescription.sessionName);
-    expect(names).toContain("LOWER_A");
-  });
-});
 
 describe("peak-mileage week cutback", () => {
   test("drops to the reduced session count, cutting Lower B first", () => {

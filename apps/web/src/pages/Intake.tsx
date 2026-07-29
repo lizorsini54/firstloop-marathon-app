@@ -1,5 +1,6 @@
 import { createPlanInputSchema } from "@firstloop/contracts/schemas/plan";
-import { useState } from "react";
+import { checkFeasibility, estimateAvailableWeeks } from "@firstloop/plan-engine";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,14 +20,21 @@ import { orpc } from "../lib/orpc";
 
 const INJURY_OPTIONS = ["Knee", "IT band", "Shin splints"];
 const DAY_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7];
+const RUNNING_DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const CUSTOM_LIFT_DAY_OPTIONS = [1, 2, 3, 4];
 
 type StrengthMode = "program" | "custom" | "none";
+type RunningExperience = "first_marathon" | "has_finished_one";
 
 const STRENGTH_MODE_OPTIONS: { value: StrengthMode; label: string }[] = [
   { value: "program", label: "Follow a program" },
   { value: "custom", label: "Custom" },
   { value: "none", label: "None" },
+];
+
+const RUNNING_EXPERIENCE_OPTIONS: { value: RunningExperience; label: string }[] = [
+  { value: "first_marathon", label: "This is my first marathon" },
+  { value: "has_finished_one", label: "I've finished one before" },
 ];
 
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
@@ -35,6 +43,8 @@ export function Intake() {
   const navigate = useNavigate();
   const [raceDate, setRaceDate] = useState("");
   const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState("");
+  const [runningExperience, setRunningExperience] = useState<RunningExperience>("has_finished_one");
+  const [runningDaysPerWeek, setRunningDaysPerWeek] = useState("4");
   const [strengthMode, setStrengthMode] = useState<StrengthMode>("program");
   const [customLiftDaysPerWeek, setCustomLiftDaysPerWeek] = useState("2");
   const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("0");
@@ -43,6 +53,16 @@ export function Intake() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ status: "idle" });
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // Live, non-blocking feasibility check — recomputed as race date/experience
+  // change, mirroring the same check the server persists at creation time.
+  const feasibilityWarning = useMemo(() => {
+    if (!raceDate) return null;
+    const parsedRaceDate = new Date(raceDate);
+    if (Number.isNaN(parsedRaceDate.getTime())) return null;
+    const availableWeeks = estimateAvailableWeeks(parsedRaceDate, new Date());
+    return checkFeasibility(availableWeeks, runningExperience).warning;
+  }, [raceDate, runningExperience]);
 
   function toggleInjury(option: string, checked: boolean) {
     setCheckedInjuries((prev) =>
@@ -60,6 +80,8 @@ export function Intake() {
     const result = createPlanInputSchema.safeParse({
       raceDate,
       currentWeeklyMileage: Number(currentWeeklyMileage),
+      runningExperience,
+      runningDaysPerWeek: Number(runningDaysPerWeek),
       strengthMode,
       customLiftDaysPerWeek: strengthMode === "custom" ? Number(customLiftDaysPerWeek) : undefined,
       bikeDaysPerWeek: Number(bikeDaysPerWeek),
@@ -133,6 +155,27 @@ export function Intake() {
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="runningExperience" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Running experience
+              </Label>
+              <Select
+                value={runningExperience}
+                onValueChange={(v) => setRunningExperience(v as RunningExperience)}
+              >
+                <SelectTrigger id="runningExperience" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RUNNING_EXPERIENCE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="currentWeeklyMileage" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Current weekly mileage
               </Label>
@@ -150,6 +193,30 @@ export function Intake() {
                 <p className="text-sm text-destructive">{fieldErrors.currentWeeklyMileage}</p>
               )}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="runningDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Current running days per week
+              </Label>
+              <Select value={runningDaysPerWeek} onValueChange={setRunningDaysPerWeek}>
+                <SelectTrigger id="runningDaysPerWeek" className="w-full font-mono">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RUNNING_DAY_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)} className="font-mono">
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {feasibilityWarning && (
+              <div className="rounded-md border border-flare/40 bg-flare-bg p-3 text-sm">
+                <p>{feasibilityWarning}</p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="strengthMode" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">

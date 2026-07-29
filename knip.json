@@ -11,6 +11,7 @@
     "packages/contracts": {},
     "packages/db": {},
     "packages/plan-engine": {},
+    "packages/scheduling": {},
     "packages/strength-engine": {}
   }
 }

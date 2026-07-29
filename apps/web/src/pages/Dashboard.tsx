@@ -108,6 +108,11 @@ export function Dashboard() {
         <div className="mt-4 rounded-md border border-border bg-card p-3">
           <PhaseArc totalWeeks={plan.totalWeeks} currentWeek={plan.currentWeek} phase={plan.phase} />
         </div>
+        {plan.feasibilityWarning && (
+          <div className="mt-4 rounded-md border border-flare/40 bg-flare-bg p-3 text-sm">
+            {plan.feasibilityWarning}
+          </div>
+        )}
       </header>
 
       <section className="mt-8">

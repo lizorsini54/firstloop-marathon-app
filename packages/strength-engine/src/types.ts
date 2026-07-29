@@ -1,25 +1,10 @@
-// Mirrors plan-engine's DayOfWeek by value rather than importing it, for the
-// same reason plan-engine mirrors Prisma's enum: this package stays zero
-// dependencies and fully standalone — a future different program (or a
-// future different sport entirely) is a data change, not a rewrite.
-export type DayOfWeek =
-  | "MONDAY"
-  | "TUESDAY"
-  | "WEDNESDAY"
-  | "THURSDAY"
-  | "FRIDAY"
-  | "SATURDAY"
-  | "SUNDAY";
-
-export const WEEK_DAY_ORDER: DayOfWeek[] = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-  "SUNDAY",
-];
+// Re-exported from the shared scheduling package (not defined here) so
+// nothing downstream has to change its imports — see
+// packages/scheduling/src/types.ts for why this is now the single source
+// of truth instead of being mirrored separately in each package.
+export { WEEK_DAY_ORDER } from "@firstloop/scheduling";
+export type { DayOfWeek } from "@firstloop/scheduling";
+import type { DayOfWeek } from "@firstloop/scheduling";
 
 // A plain string, not a literal union — a genuinely generic scheduler
 // shouldn't hardcode one program's session names in its type. Program data
