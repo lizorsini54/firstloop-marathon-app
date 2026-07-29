@@ -19,6 +19,15 @@ import { orpc } from "../lib/orpc";
 
 const INJURY_OPTIONS = ["Knee", "IT band", "Shin splints"];
 const DAY_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7];
+const CUSTOM_LIFT_DAY_OPTIONS = [1, 2, 3, 4];
+
+type StrengthMode = "program" | "custom" | "none";
+
+const STRENGTH_MODE_OPTIONS: { value: StrengthMode; label: string }[] = [
+  { value: "program", label: "Follow a program" },
+  { value: "custom", label: "Custom" },
+  { value: "none", label: "None" },
+];
 
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
 
@@ -26,6 +35,8 @@ export function Intake() {
   const navigate = useNavigate();
   const [raceDate, setRaceDate] = useState("");
   const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState("");
+  const [strengthMode, setStrengthMode] = useState<StrengthMode>("program");
+  const [customLiftDaysPerWeek, setCustomLiftDaysPerWeek] = useState("2");
   const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("0");
   const [checkedInjuries, setCheckedInjuries] = useState<string[]>([]);
   const [otherInjury, setOtherInjury] = useState("");
@@ -49,6 +60,8 @@ export function Intake() {
     const result = createPlanInputSchema.safeParse({
       raceDate,
       currentWeeklyMileage: Number(currentWeeklyMileage),
+      strengthMode,
+      customLiftDaysPerWeek: strengthMode === "custom" ? Number(customLiftDaysPerWeek) : undefined,
       bikeDaysPerWeek: Number(bikeDaysPerWeek),
       injuryFlags,
     });
@@ -137,6 +150,53 @@ export function Intake() {
                 <p className="text-sm text-destructive">{fieldErrors.currentWeeklyMileage}</p>
               )}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="strengthMode" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Strength training
+              </Label>
+              <Select value={strengthMode} onValueChange={(v) => setStrengthMode(v as StrengthMode)}>
+                <SelectTrigger id="strengthMode" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STRENGTH_MODE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {strengthMode === "program" && (
+                <p className="text-xs text-muted-foreground">
+                  Glute Gladiator: Revamped — 4 sessions a week, dropping to 3 during your peak
+                  running mileage.
+                </p>
+              )}
+            </div>
+
+            {strengthMode === "custom" && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="customLiftDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Lift days per week
+                </Label>
+                <Select value={customLiftDaysPerWeek} onValueChange={setCustomLiftDaysPerWeek}>
+                  <SelectTrigger id="customLiftDaysPerWeek" className="w-full font-mono">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CUSTOM_LIFT_DAY_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)} className="font-mono">
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.customLiftDaysPerWeek && (
+                  <p className="text-sm text-destructive">{fieldErrors.customLiftDaysPerWeek}</p>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bikeDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">

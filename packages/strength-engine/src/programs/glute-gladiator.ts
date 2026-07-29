@@ -22,13 +22,14 @@ export const gluteGladiator: StrengthProgram = {
   // doesn't cover, not a documented rule.
   sessionDropOrder: ["LOWER_B", "UPPER_A", "LOWER_A", "UPPER_B"],
   // "48+ hours between Lower A and Lower B" -> at least 2 calendar days apart.
-  minDaysBetweenLowerSessions: 2,
+  minDaysBetweenGroupedSessions: 2,
 
   sessions: [
     {
       name: "LOWER_A",
       displayName: "Lower A: Glute + Hinge Strength",
-      isLowerBody: true,
+      respectsInterference: true,
+      spacingGroup: "LOWER",
       exercises: [
         {
           name: "Barbell Hip Thrust",
@@ -68,7 +69,7 @@ export const gluteGladiator: StrengthProgram = {
     {
       name: "UPPER_A",
       displayName: "Upper A: Push Emphasis",
-      isLowerBody: false,
+      respectsInterference: false,
       exercises: [
         {
           name: "Barbell Bench Press",
@@ -120,7 +121,8 @@ export const gluteGladiator: StrengthProgram = {
     {
       name: "LOWER_B",
       displayName: "Lower B: Squat + Glute Volume",
-      isLowerBody: true,
+      respectsInterference: true,
+      spacingGroup: "LOWER",
       exercises: [
         {
           name: "Barbell Back Squat",
@@ -159,7 +161,7 @@ export const gluteGladiator: StrengthProgram = {
     {
       name: "UPPER_B",
       displayName: "Upper B: Pull Emphasis",
-      isLowerBody: false,
+      respectsInterference: false,
       exercises: [
         {
           name: "Pull-Up Protocol",

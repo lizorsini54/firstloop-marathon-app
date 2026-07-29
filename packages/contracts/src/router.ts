@@ -2,8 +2,8 @@ import { prisma } from "@firstloop/db";
 import type { Prisma } from "@firstloop/db";
 import { computePhaseBoundaries, generatePlan, phaseForWeek, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
 import type { WorkoutPrescription } from "@firstloop/plan-engine";
-import { gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
-import type { WeekContext } from "@firstloop/strength-engine";
+import { buildCustomProgram, gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
+import type { GeneratedStrengthWorkout, WeekContext } from "@firstloop/strength-engine";
 import { z } from "zod";
 import { getOrCreateUser } from "./lib/getOrCreateUser";
 import { protectedProcedure, publicProcedure } from "./procedures";
@@ -83,7 +83,14 @@ const createPlan = protectedProcedure
       });
     }
 
-    const strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+    let strengthWorkouts: GeneratedStrengthWorkout[] = [];
+    if (input.strengthMode === "program") {
+      strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+    } else if (input.strengthMode === "custom") {
+      const customProgram = buildCustomProgram(input.customLiftDaysPerWeek ?? 1);
+      strengthWorkouts = scheduleStrengthSessions(customProgram, weekContexts);
+    }
+
     const claimedDays = new Set(strengthWorkouts.map((w) => `${w.weekNumber}-${w.day}`));
     const runningWorkouts = workouts.filter(
       (w) => !(w.type === "REST" && claimedDays.has(`${w.weekNumber}-${w.day}`)),
@@ -97,6 +104,8 @@ const createPlan = protectedProcedure
           startDate,
           config: {
             currentWeeklyMileage: input.currentWeeklyMileage,
+            strengthMode: input.strengthMode,
+            customLiftDaysPerWeek: input.customLiftDaysPerWeek,
             bikeDaysPerWeek: input.bikeDaysPerWeek,
             injuryFlags: input.injuryFlags,
           },

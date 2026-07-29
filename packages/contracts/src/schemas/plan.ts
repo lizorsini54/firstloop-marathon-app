@@ -1,11 +1,20 @@
 import { z } from "zod";
 
-export const createPlanInputSchema = z.object({
-  raceDate: z.coerce.date(),
-  currentWeeklyMileage: z.number().positive(),
-  bikeDaysPerWeek: z.number().int().min(0).max(7),
-  injuryFlags: z.array(z.string().min(1)).default([]),
-});
+export const strengthModeSchema = z.enum(["program", "custom", "none"]);
+
+export const createPlanInputSchema = z
+  .object({
+    raceDate: z.coerce.date(),
+    currentWeeklyMileage: z.number().positive(),
+    strengthMode: strengthModeSchema,
+    customLiftDaysPerWeek: z.number().int().min(1).max(4).optional(),
+    bikeDaysPerWeek: z.number().int().min(0).max(7),
+    injuryFlags: z.array(z.string().min(1)).default([]),
+  })
+  .refine((data) => data.strengthMode !== "custom" || typeof data.customLiftDaysPerWeek === "number", {
+    message: "Pick how many days you'll lift.",
+    path: ["customLiftDaysPerWeek"],
+  });
 
 export const createPlanOutputSchema = z.object({
   planId: z.string(),

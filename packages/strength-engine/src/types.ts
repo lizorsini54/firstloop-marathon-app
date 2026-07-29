@@ -21,7 +21,11 @@ export const WEEK_DAY_ORDER: DayOfWeek[] = [
   "SUNDAY",
 ];
 
-export type SessionName = "LOWER_A" | "UPPER_A" | "LOWER_B" | "UPPER_B";
+// A plain string, not a literal union — a genuinely generic scheduler
+// shouldn't hardcode one program's session names in its type. Program data
+// (e.g. programs/glute-gladiator.ts) is where specific names like "LOWER_A"
+// actually live.
+export type SessionName = string;
 
 export interface ExerciseTemplate {
   name: string;
@@ -38,7 +42,15 @@ export interface ExerciseTemplate {
 export interface SessionTemplate {
   name: SessionName;
   displayName: string;
-  isLowerBody: boolean;
+  /** Should this session avoid being placed the day before a quality/long run? */
+  respectsInterference: boolean;
+  /**
+   * Sessions sharing a spacingGroup need minDaysBetweenGroupedSessions apart
+   * from each other. No group (undefined) means no spacing constraint —
+   * this is what lets a program like "custom" respect interference without
+   * guessing at a spacing rule it has no basis for.
+   */
+  spacingGroup?: string;
   exercises: ExerciseTemplate[];
 }
 
@@ -61,15 +73,15 @@ export interface StrengthProgram {
   reducedSessionCount: number;
   /** First entry is dropped first when trimming below fullSessionCount. */
   sessionDropOrder: SessionName[];
-  /** Day-granular translation of the program's minimum hours between lower-body sessions. */
-  minDaysBetweenLowerSessions: number;
+  /** Day-granular minimum gap required between two sessions sharing a spacingGroup. */
+  minDaysBetweenGroupedSessions: number;
 }
 
 export interface WeekContext {
   weekNumber: number;
   /** Days not already claimed by a running or cross-training workout this week. */
   availableDays: DayOfWeek[];
-  /** Days a lower-body session can't be placed the day immediately before. */
+  /** Days a respectsInterference session can't be placed the day immediately before. */
   interferenceDays: DayOfWeek[];
   isPeakMileageWeek: boolean;
   isDownDeloadWeek: boolean;

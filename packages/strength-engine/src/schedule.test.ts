@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { buildCustomProgram } from "./programs/custom";
 import { gluteGladiator } from "./programs/glute-gladiator";
 import { scheduleStrengthSessions } from "./schedule";
 import type { DayOfWeek, SessionName, WeekContext } from "./types";
@@ -37,7 +38,7 @@ describe("day placement: spacing + interference", () => {
 
     const order: DayOfWeek[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
     const gap = Math.abs(order.indexOf(lowerA as DayOfWeek) - order.indexOf(lowerB as DayOfWeek));
-    expect(gap).toBeGreaterThanOrEqual(gluteGladiator.minDaysBetweenLowerSessions);
+    expect(gap).toBeGreaterThanOrEqual(gluteGladiator.minDaysBetweenGroupedSessions);
   });
 
   test("still places a lower session when every available day is interference-blocked", () => {
@@ -144,5 +145,46 @@ describe("partial final cycle", () => {
     for (const w of week1) {
       expect(w.prescription.isDeloadWeek).toBe(false);
     }
+  });
+});
+
+describe("custom mode: the same scheduler fed a synthetic program", () => {
+  test("places all N sessions, respecting interference", () => {
+    const program = buildCustomProgram(2);
+    const workouts = scheduleStrengthSessions(program, [makeWeek({ weekNumber: 1 })]);
+
+    expect(workouts).toHaveLength(2);
+    for (const w of workouts) {
+      expect(["THURSDAY", "SATURDAY"]).not.toContain(w.day);
+    }
+  });
+
+  test("does not enforce spacing between custom sessions, unlike Glute Gladiator's lower sessions", () => {
+    // Same default week as the very first test in this file — Glute
+    // Gladiator's Lower A/B always land at least 2 days apart there.
+    // Custom sessions have no shared spacingGroup, so the scheduler is free
+    // to place them on adjacent days once they're both interference-clear.
+    const program = buildCustomProgram(2);
+    const workouts = scheduleStrengthSessions(program, [makeWeek({ weekNumber: 1 })]);
+
+    const days = workouts.map((w) => w.day).sort();
+    expect(days).toEqual(["MONDAY", "TUESDAY"]);
+  });
+
+  test("peak-mileage weeks do not reduce the custom session count", () => {
+    const program = buildCustomProgram(3);
+    const workouts = scheduleStrengthSessions(program, [
+      makeWeek({ weekNumber: 1, isPeakMileageWeek: true }),
+    ]);
+
+    expect(workouts).toHaveLength(3);
+  });
+
+  test("sessions carry no prescribed exercises", () => {
+    const program = buildCustomProgram(1);
+    const workouts = scheduleStrengthSessions(program, [makeWeek({ weekNumber: 1 })]);
+
+    expect(workouts[0]?.prescription.exercises).toEqual([]);
+    expect(workouts[0]?.prescription.displayName).toBe("Lift session");
   });
 });

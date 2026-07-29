@@ -57,6 +57,7 @@ async function main() {
     raceDate: RACE_DATE,
     startDate,
     currentWeeklyMileage: 22,
+    strengthMode: "program" as const,
     bikeDaysPerWeek: 1,
     injuryFlags: [] as string[],
   };
@@ -103,6 +104,7 @@ async function main() {
       startDate: intake.startDate,
       config: {
         currentWeeklyMileage: intake.currentWeeklyMileage,
+        strengthMode: intake.strengthMode,
         bikeDaysPerWeek: intake.bikeDaysPerWeek,
         injuryFlags: intake.injuryFlags,
       },

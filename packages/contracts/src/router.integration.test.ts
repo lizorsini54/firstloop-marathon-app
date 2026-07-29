@@ -79,6 +79,7 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
@@ -101,6 +102,7 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 15,
+        strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
@@ -122,6 +124,7 @@ describe("createPlan -> logSession", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
+        strengthMode: "program",
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
@@ -150,5 +153,54 @@ describe("createPlan -> logSession", () => {
     expect(dashboard.plan?.currentWeek).toBe(1);
     expect(dashboard.sessionLogs).toHaveLength(1);
     expect(dashboard.weeklyMileageTotal).toBe(5);
+  });
+});
+
+describe("createPlan strengthMode", () => {
+  test("custom mode generates the requested number of unprescribed LIFT sessions", async () => {
+    const clerkId = "clerk_test_strength_custom";
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        strengthMode: "custom",
+        customLiftDaysPerWeek: 2,
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    const liftWorkouts = dashboard.plannedWorkouts.filter((w) => w.type === "LIFT");
+    expect(liftWorkouts).toHaveLength(2);
+    for (const w of liftWorkouts) {
+      expect(w.prescription.exercises).toEqual([]);
+    }
+  });
+
+  test("none mode generates no LIFT sessions at all", async () => {
+    const clerkId = "clerk_test_strength_none";
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        strengthMode: "none",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    expect(dashboard.plannedWorkouts.some((w) => w.type === "LIFT")).toBe(false);
   });
 });
