@@ -2,47 +2,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Cadenza design tokens. Light is the primary, deliberately-designed
+ * identity (instrument-panel register — a GPS watch face, not a wellness
+ * app); dark completes the .dark scaffold for prefers-color-scheme but
+ * wasn't the starting point. See DECISIONS.md, Checkpoint 6.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --face-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --face-body: "IBM Plex Sans", system-ui, sans-serif;
+  --face-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --background: #f2f3f1;
+  --foreground: #1a1d21;
+  --card: #ffffff;
+  --card-foreground: #1a1d21;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d21;
+  --primary: #2f6fef;
+  --primary-foreground: #f7f9ff;
+  --secondary: #e6e8e6;
+  --secondary-foreground: #1a1d21;
+  --muted: #e6e8e6;
+  --muted-foreground: #6b7280;
+  --accent: #e6edfd;
+  --accent-foreground: #1a1d21;
+  --destructive: #d6432a;
+  --border: #d7d9d6;
+  --input: #d7d9d6;
+  --ring: #2f6fef;
+  --flare: #e8501e;
+  --flare-bg: #fbe7de;
+  --radius: 0.25rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: #16181b;
+  --foreground: #e9ebec;
+  --card: #1e2227;
+  --card-foreground: #e9ebec;
+  --popover: #1e2227;
+  --popover-foreground: #e9ebec;
+  --primary: #5b8dff;
+  --primary-foreground: #0c1220;
+  --secondary: #262b31;
+  --secondary-foreground: #e9ebec;
+  --muted: #262b31;
+  --muted-foreground: #9aa1aa;
+  --accent: #232a35;
+  --accent-foreground: #e9ebec;
+  --destructive: #f0715c;
+  --border: #33383f;
+  --input: #33383f;
+  --ring: #5b8dff;
+  --flare: #ff6b3d;
+  --flare-bg: #3a2419;
 }
 
 @theme inline {
@@ -64,13 +78,36 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-flare: var(--flare);
+  --color-flare-bg: var(--flare-bg);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --font-sans: var(--face-body);
+  --font-display: var(--face-display);
+  --font-mono: var(--face-mono);
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: var(--face-body);
+}
+
+/* Numerals get their own register everywhere — mileage, pace, duration,
+   RPE, weight, dates. Tabular figures so columns of stats line up. */
+.font-mono,
+.mono-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.label-caps {
+  font-family: var(--face-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }

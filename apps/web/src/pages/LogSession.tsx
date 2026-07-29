@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { orpc } from "../lib/orpc";
 
 type WorkoutType = "RUN" | "LIFT" | "BIKE" | "REST";
@@ -8,6 +9,10 @@ type WorkoutType = "RUN" | "LIFT" | "BIKE" | "REST";
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
 
 const today = new Date().toISOString().slice(0, 10);
+
+const fieldClass =
+  "rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
 export function LogSession() {
   const navigate = useNavigate();
@@ -42,97 +47,106 @@ export function LogSession() {
 
   return (
     <div className="mx-auto max-w-lg p-6">
-      <h1 className="text-xl font-semibold">Log a session</h1>
-      <form
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-        className="mt-6 flex flex-col gap-4"
-      >
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Date</span>
-          <input
-            type="date"
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Type</span>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as WorkoutType)}
-            className="rounded-md border border-border px-3 py-2"
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display text-2xl font-bold uppercase tracking-tight">
+            Log a session
+          </CardTitle>
+          <CardDescription>What did you actually do out there?</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+            className="flex flex-col gap-4"
           >
-            <option value="RUN">Run</option>
-            <option value="LIFT">Lift</option>
-            <option value="BIKE">Bike</option>
-            <option value="REST">Rest</option>
-          </select>
-        </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>Date</span>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={`${fieldClass} font-mono`}
+              />
+            </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Distance (miles, optional)</span>
-          <input
-            type="number"
-            min={0}
-            step="0.1"
-            value={distanceMiles}
-            onChange={(e) => setDistanceMiles(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>Type</span>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as WorkoutType)}
+                className={fieldClass}
+              >
+                <option value="RUN">Run</option>
+                <option value="LIFT">Lift</option>
+                <option value="BIKE">Bike</option>
+                <option value="REST">Rest</option>
+              </select>
+            </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Duration (minutes)</span>
-          <input
-            type="number"
-            required
-            min={1}
-            value={durationMin}
-            onChange={(e) => setDurationMin(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>Distance (miles, optional)</span>
+              <input
+                type="number"
+                min={0}
+                step="0.1"
+                value={distanceMiles}
+                onChange={(e) => setDistanceMiles(e.target.value)}
+                className={`${fieldClass} font-mono`}
+              />
+            </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">RPE (1-10)</span>
-          <input
-            type="number"
-            required
-            min={1}
-            max={10}
-            value={rpe}
-            onChange={(e) => setRpe(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>Duration (minutes)</span>
+              <input
+                type="number"
+                required
+                min={1}
+                value={durationMin}
+                onChange={(e) => setDurationMin(e.target.value)}
+                className={`${fieldClass} font-mono`}
+              />
+            </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Notes (optional)</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>RPE (1-10)</span>
+              <input
+                type="number"
+                required
+                min={1}
+                max={10}
+                value={rpe}
+                onChange={(e) => setRpe(e.target.value)}
+                className={`${fieldClass} font-mono`}
+              />
+            </label>
 
-        {state.status === "error" && (
-          <p className="text-sm text-red-500">Error: {state.error}</p>
-        )}
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>Notes (optional)</span>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className={fieldClass}
+              />
+            </label>
 
-        <button
-          type="submit"
-          disabled={state.status === "submitting"}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-        >
-          {state.status === "submitting" ? "Saving…" : "Save session"}
-        </button>
-      </form>
+            {state.status === "error" && (
+              <p className="text-sm text-destructive">Error: {state.error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={state.status === "submitting"}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              {state.status === "submitting" ? "Logging…" : "Log session"}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

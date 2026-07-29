@@ -13,22 +13,33 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <nav className="flex items-center justify-between border-b border-border px-6 py-3">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold">Cadenza</span>
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={
-                location.pathname === item.to
-                  ? "text-sm font-medium underline underline-offset-4"
-                  : "text-sm text-muted-foreground hover:underline hover:underline-offset-4"
-              }
-            >
-              {item.label}
-            </Link>
-          ))}
+      <nav className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
+        <div className="flex items-center gap-6">
+          <Link
+            to="/dashboard"
+            className="rounded-sm font-display text-lg font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            CADENZA
+          </Link>
+          <div className="flex items-center gap-5">
+            {NAV_ITEMS.map((item) => {
+              const active = location.pathname === item.to;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={
+                    "rounded-sm border-b-2 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+                    (active
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
         <UserButton />
       </nav>

@@ -1,6 +1,7 @@
 import type { DashboardOutput } from "@firstloop/contracts";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { PhaseArc } from "../components/PhaseArc";
 import { orpc } from "../lib/orpc";
 
 type LoadState =
@@ -14,6 +15,8 @@ const PHASE_LABEL: Record<string, string> = {
   peak: "Peak",
   taper: "Taper",
 };
+
+const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
 function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -50,17 +53,25 @@ export function Dashboard() {
   }
 
   if (state.status === "error") {
-    return <p className="p-6 text-red-500">Error: {state.error}</p>;
+    return <p className="p-6 text-destructive">Error: {state.error}</p>;
   }
 
   const { plan, plannedWorkouts, sessionLogs, weeklyMileageTotal } = state.data;
 
   if (!plan) {
     return (
-      <div className="p-6">
-        <p className="text-muted-foreground">You don't have a training plan yet.</p>
-        <Link to="/intake" className="mt-2 inline-block underline underline-offset-4">
-          Set your goal to generate one
+      <div className="mx-auto max-w-lg p-6">
+        <p className="font-display text-2xl font-bold uppercase tracking-tight">
+          No plan on the board yet
+        </p>
+        <p className="mt-2 text-muted-foreground">
+          Tell us your race day and we'll build the weeks back from it.
+        </p>
+        <Link
+          to="/intake"
+          className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          Set your goal
         </Link>
       </div>
     );
@@ -69,40 +80,61 @@ export function Dashboard() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <header>
-        <h1 className="text-xl font-semibold">
-          Week {plan.currentWeek} of {plan.totalWeeks} · {PHASE_LABEL[plan.phase]} phase
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Race day {new Date(plan.raceDate).toLocaleDateString()}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className={labelClass}>
+              Week {plan.currentWeek} of {plan.totalWeeks}
+            </p>
+            <h1 className="font-display text-3xl font-bold uppercase tracking-tight">
+              {PHASE_LABEL[plan.phase]} phase
+            </h1>
+          </div>
+          <div className="text-right">
+            <p className={labelClass}>Race day</p>
+            <p className="font-mono text-lg text-foreground">
+              {new Date(plan.raceDate).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 rounded-md border border-border bg-card p-3">
+          <PhaseArc totalWeeks={plan.totalWeeks} currentWeek={plan.currentWeek} phase={plan.phase} />
+        </div>
       </header>
 
-      <section className="mt-6">
-        <h2 className="text-sm font-medium text-muted-foreground">This week's plan</h2>
-        <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+      <section className="mt-8">
+        <h2 className={labelClass}>This week's plan</h2>
+        <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
           {plannedWorkouts.map((w) => (
-            <li key={w.id} className="flex items-center justify-between px-4 py-2 text-sm">
-              <span className="w-24">{titleCase(w.day)}</span>
-              <span className="w-16">{titleCase(w.type)}</span>
-              <span className="text-muted-foreground">{describePrescription(w.prescription)}</span>
+            <li key={w.id} className="grid grid-cols-[6rem_4rem_1fr] items-center gap-2 px-4 py-2.5 text-sm">
+              <span>{titleCase(w.day)}</span>
+              <span>{titleCase(w.type)}</span>
+              <span className="text-right font-mono text-muted-foreground">
+                {describePrescription(w.prescription)}
+              </span>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="mt-6">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Logged this week · {weeklyMileageTotal.toFixed(1)} mi total
-        </h2>
+      <section className="mt-8">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className={labelClass}>Logged this week</h2>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-3xl font-semibold tabular-nums text-foreground">
+              {weeklyMileageTotal.toFixed(1)}
+            </span>
+            <span className={labelClass}>mi</span>
+          </div>
+        </div>
         {sessionLogs.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nothing logged yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nothing logged yet — the week's still open.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+          <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
             {sessionLogs.map((s) => (
-              <li key={s.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="w-24">{new Date(s.date).toLocaleDateString()}</span>
-                <span className="w-16">{titleCase(s.type)}</span>
-                <span className="text-muted-foreground">
+              <li key={s.id} className="grid grid-cols-[6rem_4rem_1fr] items-center gap-2 px-4 py-2.5 text-sm">
+                <span className="font-mono">{new Date(s.date).toLocaleDateString()}</span>
+                <span>{titleCase(s.type)}</span>
+                <span className="text-right font-mono text-muted-foreground">
                   {s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}
                   {s.durationMin}min · RPE {s.rpe}
                 </span>
@@ -114,7 +146,7 @@ export function Dashboard() {
 
       <Link
         to="/log"
-        className="mt-6 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className="mt-6 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         Log a session
       </Link>
