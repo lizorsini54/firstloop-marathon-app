@@ -1,6 +1,7 @@
 export { gluteGladiator } from "./programs/glute-gladiator";
 export { buildCustomProgram } from "./programs/custom";
-export { scheduleStrengthSessions } from "./schedule";
+export { scheduleStrengthSessions, checkDayEconomy } from "./schedule";
+export type { DayEconomyCheck } from "./schedule";
 export { WEEK_DAY_ORDER } from "./types";
 export type {
   BlockDefinition,

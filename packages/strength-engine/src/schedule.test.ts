@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { buildCustomProgram } from "./programs/custom";
 import { gluteGladiator } from "./programs/glute-gladiator";
-import { scheduleStrengthSessions } from "./schedule";
+import { checkDayEconomy, scheduleStrengthSessions } from "./schedule";
 import type { SessionName, WeekContext } from "./types";
 
 function makeWeek(overrides: Partial<WeekContext> & { weekNumber: number }): WeekContext {
@@ -139,5 +139,137 @@ describe("custom mode: the same scheduler fed a synthetic program", () => {
 
     expect(workouts[0]?.prescription.exercises).toEqual([]);
     expect(workouts[0]?.prescription.displayName).toBe("Lift session");
+  });
+});
+
+describe("peak-mileage intensity cap", () => {
+  test("caps a raw Peak block down to Strengthen during a peak-mileage week", () => {
+    // weekNumber 9 -> weekInCycle 9, which is Glute Gladiator's own "Peak" block by raw position.
+    const workouts = scheduleStrengthSessions(gluteGladiator, [
+      makeWeek({ weekNumber: 9, isPeakMileageWeek: true }),
+    ]);
+
+    for (const w of workouts) {
+      expect(w.prescription.block).toBe("Strengthen");
+    }
+  });
+
+  test("caps a raw Test/Deload block down to Strengthen during a peak-mileage week", () => {
+    // weekNumber 12 -> weekInCycle 12, Glute Gladiator's "Test/Deload" — the
+    // near-max-effort week found colliding with running's peak mileage.
+    const workouts = scheduleStrengthSessions(gluteGladiator, [
+      makeWeek({ weekNumber: 12, isPeakMileageWeek: true }),
+    ]);
+
+    for (const w of workouts) {
+      expect(w.prescription.block).toBe("Strengthen");
+    }
+  });
+
+  test("leaves a raw Peak block unchanged when the week isn't a peak-mileage week", () => {
+    const workouts = scheduleStrengthSessions(gluteGladiator, [
+      makeWeek({ weekNumber: 9, isPeakMileageWeek: false }),
+    ]);
+
+    for (const w of workouts) {
+      expect(w.prescription.block).toBe("Peak");
+    }
+  });
+
+  test("leaves a block already at or below the cap's intensity unchanged during a peak-mileage week", () => {
+    // weekNumber 1 -> "Build" (intensityRank 1), below Strengthen's cap (2) — nothing to gain by overriding it.
+    const workouts = scheduleStrengthSessions(gluteGladiator, [
+      makeWeek({ weekNumber: 1, isPeakMileageWeek: true }),
+    ]);
+
+    for (const w of workouts) {
+      expect(w.prescription.block).toBe("Build");
+    }
+  });
+
+  test("taper's full deload override still wins over the peak-mileage cap", () => {
+    const workouts = scheduleStrengthSessions(gluteGladiator, [
+      makeWeek({ weekNumber: 9, isPeakMileageWeek: true, isDownDeloadWeek: true }),
+    ]);
+
+    for (const w of workouts) {
+      expect(w.prescription.block).toBe("Deload");
+      expect(w.prescription.isDeloadWeek).toBe(true);
+    }
+  });
+});
+
+describe("injury-aware exercise substitution", () => {
+  test("a Knee flag swaps Back Squat for Leg Press and drops Bulgarian Split Squat and Walking Lunge", () => {
+    const workouts = scheduleStrengthSessions(gluteGladiator, [makeWeek({ weekNumber: 1 })], ["Knee"]);
+
+    const lowerA = workouts.find((w) => w.prescription.sessionName === "LOWER_A");
+    const lowerB = workouts.find((w) => w.prescription.sessionName === "LOWER_B");
+
+    expect(lowerA?.prescription.exercises.some((e) => e.name === "Dumbbell Bulgarian Split Squat")).toBe(
+      false,
+    );
+    expect(lowerB?.prescription.exercises.some((e) => e.name === "Barbell Back Squat")).toBe(false);
+    const legPress = lowerB?.prescription.exercises.find((e) => e.name === "Leg Press");
+    expect(legPress).toBeDefined();
+    expect(legPress?.isMainLift).toBe(true);
+    expect(lowerB?.prescription.exercises.some((e) => e.name === "Dumbbell Walking Lunge")).toBe(false);
+  });
+
+  test("no injury flags leaves every exercise unchanged", () => {
+    const workouts = scheduleStrengthSessions(gluteGladiator, [makeWeek({ weekNumber: 1 })]);
+    const lowerB = workouts.find((w) => w.prescription.sessionName === "LOWER_B");
+
+    expect(lowerB?.prescription.exercises.some((e) => e.name === "Barbell Back Squat")).toBe(true);
+  });
+
+  test("a flag with no documented substitution leaves exercises unchanged", () => {
+    const workouts = scheduleStrengthSessions(gluteGladiator, [makeWeek({ weekNumber: 1 })], ["IT band"]);
+    const lowerA = workouts.find((w) => w.prescription.sessionName === "LOWER_A");
+    const lowerB = workouts.find((w) => w.prescription.sessionName === "LOWER_B");
+
+    expect(lowerA?.prescription.exercises.some((e) => e.name === "Dumbbell Bulgarian Split Squat")).toBe(
+      true,
+    );
+    expect(lowerB?.prescription.exercises.some((e) => e.name === "Barbell Back Squat")).toBe(true);
+  });
+});
+
+describe("checkDayEconomy", () => {
+  test("returns null when the schedule has room for everything the program needs", () => {
+    const week = makeWeek({ weekNumber: 1 });
+    const workouts = scheduleStrengthSessions(gluteGladiator, [week]);
+
+    expect(checkDayEconomy(gluteGladiator, [week], workouts).warning).toBeNull();
+  });
+
+  test("flags an understaffed week for a program with no spacing rule to also violate", () => {
+    const program = buildCustomProgram(3);
+    const week = makeWeek({ weekNumber: 1, availableDays: ["MONDAY"] });
+    const workouts = scheduleStrengthSessions(program, [week]);
+
+    const { warning } = checkDayEconomy(program, [week], workouts);
+    expect(warning).not.toBeNull();
+    expect(warning).toContain("fewer sessions than planned");
+    expect(warning).not.toContain("back-to-back");
+  });
+
+  test("flags understaffing and unsafe spacing together — the exact scenario found in review", () => {
+    // Only 2 available days, both claimed by Lower A/Lower B (adjacent, no
+    // rest between them) — Upper A/Upper B get dropped entirely. This is
+    // the app's own default persona shape (4 running days + 1 bike day).
+    const week = makeWeek({
+      weekNumber: 1,
+      availableDays: ["FRIDAY", "SATURDAY"],
+      interferenceDays: ["SUNDAY"],
+    });
+    const workouts = scheduleStrengthSessions(gluteGladiator, [week]);
+
+    const { warning } = checkDayEconomy(gluteGladiator, [week], workouts);
+    expect(warning).not.toBeNull();
+    expect(warning).toContain("1 of 1 weeks");
+    expect(warning).toContain("Lower A");
+    expect(warning).toContain("Lower B");
+    expect(warning).toContain(gluteGladiator.name);
   });
 });

@@ -62,6 +62,8 @@ export const planMetaSchema = z.object({
   currentWeek: z.number().int(),
   phase: z.enum(["base", "build", "peak", "taper"]),
   feasibilityWarning: z.string().nullable(),
+  strengthWarning: z.string().nullable(),
+  injuryWarning: z.string().nullable(),
 });
 
 export const dashboardOutputSchema = z.object({

@@ -22,6 +22,19 @@ export interface ExerciseTemplate {
   /** The one lift this session's notes explicitly call the primary progression lift. */
   isMainLift?: boolean;
   notes?: string;
+  /**
+   * When a matching (case-insensitive) injury flag is present, this
+   * exercise's name/notes are swapped for the given alternative — reserved
+   * for flags with a genuinely defensible, documented substitute, not a
+   * catch-all.
+   */
+  substituteForFlag?: { flag: string; replacementName: string; replacementNotes: string };
+  /**
+   * Injury flags (case-insensitive) for which this exercise is dropped
+   * outright rather than substituted — used when no defensible documented
+   * alternative exists, so nothing invented gets prescribed instead.
+   */
+  dropForFlags?: string[];
 }
 
 export interface SessionTemplate {
@@ -47,6 +60,16 @@ export interface BlockDefinition {
   mainLiftReps: string;
   accessoryReps: string;
   intent: string;
+  /**
+   * How heavy this block's actual prescription is, independent of isDeload —
+   * a block can be a volume-reduction/testing week (isDeload: true) while
+   * still being near-maximal effort (e.g. "work to a heavy top set"), which
+   * isDeload alone can't express. Used to decide whether a block needs
+   * capping during a running peak-mileage week.
+   */
+  intensityRank: number;
+  /** The one block a program falls back to when peak-mileage capping kicks in. */
+  isPeakMileageCap: boolean;
 }
 
 export interface StrengthProgram {

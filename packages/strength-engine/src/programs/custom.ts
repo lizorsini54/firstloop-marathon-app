@@ -35,6 +35,10 @@ export function buildCustomProgram(sessionsPerWeek: number): StrengthProgram {
         mainLiftReps: "",
         accessoryReps: "",
         intent: "",
+        // No real intensity variation to cap for a synthetic program — both
+        // blocks sit at rank 0, and this one is its own cap (a no-op).
+        intensityRank: 0,
+        isPeakMileageCap: true,
       },
       {
         // Only reached when the running plan's taper overrides the raw
@@ -47,6 +51,8 @@ export function buildCustomProgram(sessionsPerWeek: number): StrengthProgram {
         mainLiftReps: "",
         accessoryReps: "",
         intent: "",
+        intensityRank: 0,
+        isPeakMileageCap: false,
       },
     ],
   };
