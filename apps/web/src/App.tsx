@@ -9,6 +9,7 @@ import { History } from "./pages/History";
 import { Home } from "./pages/Home";
 import { Intake } from "./pages/Intake";
 import { LogSession } from "./pages/LogSession";
+import { Progress } from "./pages/Progress";
 
 function ClerkTokenBridge() {
   const { getToken } = useAuth();
@@ -68,6 +69,14 @@ export function App() {
           element={
             <RequireAuth>
               <History />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/progress"
+          element={
+            <RequireAuth>
+              <Progress />
             </RequireAuth>
           }
         />
