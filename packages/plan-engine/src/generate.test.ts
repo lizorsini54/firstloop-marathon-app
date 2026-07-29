@@ -1,6 +1,7 @@
+import { WEEK_DAY_ORDER } from "@firstloop/scheduling";
 import { describe, expect, test } from "bun:test";
-import { generatePlan, WEEK_DAY_ORDER } from "./generate";
-import { computePhaseBoundaries } from "./phases";
+import { checkFeasibility, generatePlan, MIN_WEEKS_EXPERIENCED, MIN_WEEKS_FIRST_TIMER } from "./generate";
+import { computePhaseBoundaries, phaseForWeek } from "./phases";
 import type { GeneratedWorkout, PlanIntake } from "./types";
 
 const PEAK_LONG_RUN_MILES = 19;
@@ -11,6 +12,8 @@ function makeIntake(overrides: Partial<PlanIntake> = {}): PlanIntake {
     raceDate: new Date("2027-02-27"),
     startDate: new Date("2026-06-01"),
     currentWeeklyMileage: 25,
+    runningExperience: "has_finished_one",
+    runningDaysPerWeek: 4,
     bikeDaysPerWeek: 1,
     injuryFlags: [],
     ...overrides,
@@ -192,5 +195,94 @@ describe("generatePlan — structural sanity", () => {
     const week1 = workouts.filter((w) => w.weekNumber === 1);
 
     expect(week1.filter((w) => w.type === "BIKE")).toHaveLength(2);
+  });
+});
+
+describe("generatePlan — running frequency", () => {
+  // The brief's "range of experience levels and plan lengths" for the run-
+  // frequency fix specifically — a 39-week plan exercises every phase.
+  const RUNNING_DAYS_VALUES = [1, 3, 5, 7];
+
+  for (const runningDaysPerWeek of RUNNING_DAYS_VALUES) {
+    test(`schedules exactly ${runningDaysPerWeek} run day(s)/week with the phase-correct quality count and no quality run the day before the long run`, () => {
+      const intake = makeIntake({ runningDaysPerWeek, raceDate: new Date("2027-02-27") });
+      const { workouts, totalWeeks } = generatePlan(intake);
+      const boundaries = computePhaseBoundaries(totalWeeks);
+
+      for (let week = 1; week <= totalWeeks; week++) {
+        const runWorkouts = workouts.filter((w) => w.weekNumber === week && w.type === "RUN");
+        const phase = phaseForWeek(week, boundaries);
+
+        expect(runWorkouts).toHaveLength(runningDaysPerWeek);
+
+        const longRuns = runWorkouts.filter((w) => w.prescription.quality === "long");
+        expect(longRuns).toHaveLength(1);
+        expect(longRuns[0]?.day).toBe("SUNDAY");
+
+        const otherRunDays = Math.max(0, runningDaysPerWeek - 1);
+        const expectedQualityCount = Math.min(
+          phase === "peak" ? 2 : phase === "build" ? 1 : 0,
+          otherRunDays,
+        );
+        const qualityRuns = runWorkouts.filter(
+          (w) => w.prescription.quality === "tempo" || w.prescription.quality === "intervals",
+        );
+        expect(qualityRuns).toHaveLength(expectedQualityCount);
+
+        const easyRuns = runWorkouts.filter((w) => w.prescription.quality === "easy");
+        expect(easyRuns).toHaveLength(otherRunDays - expectedQualityCount);
+
+        // "Avoid the day before a long run" is scoped to quality runs —
+        // Saturday (the day before Sunday's long run) should never host one.
+        for (const q of qualityRuns) {
+          expect(q.day).not.toBe("SATURDAY");
+        }
+      }
+    });
+  }
+
+  test("a runner who only chose 1 day/week gets just the long run — no easy runs added on top", () => {
+    const intake = makeIntake({ runningDaysPerWeek: 1 });
+    const { workouts } = generatePlan(intake);
+    const week1Runs = workouts.filter((w) => w.weekNumber === 1 && w.type === "RUN");
+
+    expect(week1Runs).toHaveLength(1);
+    expect(week1Runs[0]?.prescription.quality).toBe("long");
+  });
+});
+
+describe("checkFeasibility — boundary behavior", () => {
+  test("exactly at the minimum is feasible for a first marathon", () => {
+    const result = checkFeasibility(MIN_WEEKS_FIRST_TIMER, "first_marathon");
+    expect(result.feasible).toBe(true);
+    expect(result.warning).toBeNull();
+  });
+
+  test("one week short of the minimum is not feasible for a first marathon, and names the gap", () => {
+    const result = checkFeasibility(MIN_WEEKS_FIRST_TIMER - 1, "first_marathon");
+    expect(result.feasible).toBe(false);
+    expect(result.warning).toContain(String(MIN_WEEKS_FIRST_TIMER - 1));
+    expect(result.warning).toContain(String(MIN_WEEKS_FIRST_TIMER));
+  });
+
+  test("exactly at the minimum is feasible for someone who's finished one before", () => {
+    const result = checkFeasibility(MIN_WEEKS_EXPERIENCED, "has_finished_one");
+    expect(result.feasible).toBe(true);
+    expect(result.warning).toBeNull();
+  });
+
+  test("one week short of the minimum is not feasible for someone who's finished one before", () => {
+    const result = checkFeasibility(MIN_WEEKS_EXPERIENCED - 1, "has_finished_one");
+    expect(result.feasible).toBe(false);
+    expect(result.warning).toContain(String(MIN_WEEKS_EXPERIENCED - 1));
+    expect(result.warning).toContain(String(MIN_WEEKS_EXPERIENCED));
+  });
+
+  test("well short of the minimum still reports the correct gap", () => {
+    const result = checkFeasibility(10, "first_marathon");
+    expect(result.feasible).toBe(false);
+    expect(result.warning).toContain("10 week");
+    expect(result.warning).toContain(`${MIN_WEEKS_FIRST_TIMER}`);
+    expect(result.warning).toContain(`${MIN_WEEKS_FIRST_TIMER - 10} week`);
   });
 });

@@ -1,9 +1,12 @@
+import { placeSlots, WEEK_DAY_ORDER } from "@firstloop/scheduling";
+import type { Slot } from "@firstloop/scheduling";
 import { computePhaseBoundaries, phaseForWeek } from "./phases";
 import type {
   DayOfWeek,
   GeneratedPlan,
   GeneratedWorkout,
   PlanIntake,
+  RunningExperience,
   WorkoutPrescription,
   WorkoutType,
 } from "./types";
@@ -12,21 +15,24 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 const MIN_TOTAL_WEEKS = 4;
 
 const LONG_RUN_DAY: DayOfWeek = "SUNDAY";
-const QUALITY_DAYS: DayOfWeek[] = ["WEDNESDAY", "FRIDAY"];
-export const WEEK_DAY_ORDER: DayOfWeek[] = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-  "SUNDAY",
-];
+const QUALITY_SPACING_GROUP = "QUALITY";
+// How many calendar days apart two quality runs should land, at minimum.
+// A judgment call (see DECISIONS.md) — Wednesday/Friday, the old fixed
+// placement, were always exactly this far apart, so this preserves that
+// spacing as a floor now that placement is dynamic instead of hardcoded.
+const MIN_DAYS_BETWEEN_QUALITY_RUNS = 2;
 
 const PEAK_LONG_RUN_MILES = 19;
 const MIN_LONG_RUN_MILES = 4;
 const INJURY_VOLUME_MULTIPLIER = 0.8;
 const TAPER_RATIOS = [0.6, 0.4, 0.25, 0.15];
+
+// Coaching judgment calls, not hard science — commonly-cited, conservative
+// minimums for an injury-conscious build from a modest base, not a precise
+// formula. A first marathon needs meaningfully more runway than a repeat
+// one. See DECISIONS.md for the full reasoning.
+export const MIN_WEEKS_FIRST_TIMER = 20;
+export const MIN_WEEKS_EXPERIENCED = 12;
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -94,15 +100,50 @@ function workoutsForWeek(
     quality: "long",
   });
 
-  const qualityDayCount = phase === "peak" ? 2 : phase === "build" ? 1 : 0;
+  // The long run counts as one of the runner's stated weekly running days —
+  // everything else fills out from there as quality (once the phase
+  // introduces it) and easy runs, not a single additional long run repeated
+  // every week.
+  const otherRunDays = Math.max(0, intake.runningDaysPerWeek - 1);
+  const baseQualityDayCount = phase === "peak" ? 2 : phase === "build" ? 1 : 0;
+  const qualityDayCount = Math.min(baseQualityDayCount, otherRunDays);
+  const easyDayCount = otherRunDays - qualityDayCount;
+
+  const runSlots: Slot[] = [
+    ...Array.from({ length: qualityDayCount }, (_, i) => ({
+      name: `QUALITY_${i}`,
+      respectsInterference: true,
+      spacingGroup: QUALITY_SPACING_GROUP,
+    })),
+    ...Array.from({ length: easyDayCount }, (_, i) => ({
+      name: `EASY_${i}`,
+      respectsInterference: false,
+    })),
+  ];
+  // Only the long run is already fixed at this point, so "everything not
+  // yet used" and "everything but the long run day" are the same set —
+  // simpler to express directly than to re-derive from `used`.
+  const runPlacements = placeSlots(
+    runSlots,
+    WEEK_DAY_ORDER.filter((d) => d !== LONG_RUN_DAY),
+    [LONG_RUN_DAY],
+    MIN_DAYS_BETWEEN_QUALITY_RUNS,
+  );
+
   for (let i = 0; i < qualityDayCount; i++) {
-    const day = QUALITY_DAYS[i];
+    const day = runPlacements.get(`QUALITY_${i}`);
     if (!day) continue;
     make(day, "RUN", {
       quality: i === 0 ? "tempo" : "intervals",
       durationMin: phase === "peak" ? 45 : 40,
       notes: i === 0 ? "Tempo run" : "Interval session",
     });
+  }
+
+  for (let i = 0; i < easyDayCount; i++) {
+    const day = runPlacements.get(`EASY_${i}`);
+    if (!day) continue;
+    make(day, "RUN", { quality: "easy", durationMin: 30, notes: "Easy run" });
   }
 
   const bikeDays = WEEK_DAY_ORDER.filter((d) => !used.has(d)).slice(0, intake.bikeDaysPerWeek);
@@ -116,6 +157,42 @@ function workoutsForWeek(
   });
 
   return workouts;
+}
+
+/** How many full weeks fall between startDate and raceDate. Never negative. */
+export function estimateAvailableWeeks(raceDate: Date, startDate: Date): number {
+  return Math.max(0, Math.ceil((raceDate.getTime() - startDate.getTime()) / MS_PER_WEEK));
+}
+
+export interface FeasibilityResult {
+  feasible: boolean;
+  /** Names the actual gap; null when the timeline meets the minimum. */
+  warning: string | null;
+}
+
+/**
+ * Compares the available timeline against a reasonable minimum safe
+ * buildup — a coaching judgment call (see MIN_WEEKS_* above), not a hard
+ * block. Callers decide whether to surface the warning and whether to let
+ * the user proceed anyway (they should).
+ */
+export function checkFeasibility(
+  availableWeeks: number,
+  runningExperience: RunningExperience,
+): FeasibilityResult {
+  const minWeeks = runningExperience === "first_marathon" ? MIN_WEEKS_FIRST_TIMER : MIN_WEEKS_EXPERIENCED;
+  if (availableWeeks >= minWeeks) {
+    return { feasible: true, warning: null };
+  }
+
+  const gap = minWeeks - availableWeeks;
+  const audience = runningExperience === "first_marathon" ? "a first marathon" : "someone who's finished one before";
+  return {
+    feasible: false,
+    warning:
+      `Only ${availableWeeks} week${availableWeeks === 1 ? "" : "s"} until race day — we recommend at least ` +
+      `${minWeeks} for ${audience} (${gap} week${gap === 1 ? "" : "s"} short).`,
+  };
 }
 
 /**
