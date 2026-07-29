@@ -4,6 +4,7 @@ export type { AppRouter } from "./router";
 export * from "./schemas/dashboard";
 export * from "./schemas/history";
 export * from "./schemas/me";
+export * from "./schemas/overview";
 export * from "./schemas/ping";
 export * from "./schemas/plan";
 export * from "./schemas/progress";

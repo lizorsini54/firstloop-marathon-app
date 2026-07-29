@@ -18,6 +18,7 @@ import { dashboardOutputSchema } from "./schemas/dashboard";
 import type { DashboardOutput } from "./schemas/dashboard";
 import { getSessionHistoryOutputSchema } from "./schemas/history";
 import { meOutputSchema } from "./schemas/me";
+import { getPlanOverviewOutputSchema } from "./schemas/overview";
 import { pingInputSchema, pingOutputSchema } from "./schemas/ping";
 import { createPlanInputSchema, createPlanOutputSchema } from "./schemas/plan";
 import { getRunningProgressOutputSchema } from "./schemas/progress";
@@ -43,6 +44,31 @@ function startOfWeekUTC(d: Date): Date {
   const start = startOfUTCDay(d);
   start.setUTCDate(start.getUTCDate() - diffToMonday);
   return start;
+}
+
+/**
+ * Shared plan-meta computation — totalWeeks/currentWeek/phase/
+ * feasibilityWarning, the same fields both getDashboard and getPlanOverview
+ * need derived from a plan row. Callers spread the plan's own id/raceDate/
+ * startDate alongside this.
+ */
+async function computePlanMeta(plan: { id: string; startDate: Date; config: Prisma.JsonValue }) {
+  const { _max } = await prisma.plannedWorkout.aggregate({
+    where: { planId: plan.id },
+    _max: { weekNumber: true },
+  });
+  const totalWeeks = _max.weekNumber ?? 1;
+
+  const now = new Date();
+  const rawWeek = Math.floor((now.getTime() - plan.startDate.getTime()) / MS_PER_WEEK) + 1;
+  const currentWeek = Math.min(Math.max(rawWeek, 1), totalWeeks);
+
+  const boundaries = computePhaseBoundaries(totalWeeks);
+  const phase = phaseForWeek(currentWeek, boundaries);
+
+  const config = plan.config as { feasibilityWarning?: string | null } | null;
+
+  return { totalWeeks, currentWeek, phase, feasibilityWarning: config?.feasibilityWarning ?? null };
 }
 
 const ping = publicProcedure
@@ -277,18 +303,8 @@ const getDashboard = protectedProcedure
       return emptyDashboard;
     }
 
-    const { _max } = await prisma.plannedWorkout.aggregate({
-      where: { planId: plan.id },
-      _max: { weekNumber: true },
-    });
-    const totalWeeks = _max.weekNumber ?? 1;
-
-    const now = new Date();
-    const rawWeek = Math.floor((now.getTime() - plan.startDate.getTime()) / MS_PER_WEEK) + 1;
-    const currentWeek = Math.min(Math.max(rawWeek, 1), totalWeeks);
-
-    const boundaries = computePhaseBoundaries(totalWeeks);
-    const phase = phaseForWeek(currentWeek, boundaries);
+    const meta = await computePlanMeta(plan);
+    const { totalWeeks, currentWeek } = meta;
 
     const weekStart = new Date(plan.startDate.getTime() + (currentWeek - 1) * MS_PER_WEEK);
     const weekEnd = new Date(weekStart.getTime() + MS_PER_WEEK);
@@ -332,18 +348,8 @@ const getDashboard = protectedProcedure
       };
     });
 
-    const config = plan.config as { feasibilityWarning?: string | null } | null;
-
     return {
-      plan: {
-        id: plan.id,
-        raceDate: plan.raceDate,
-        startDate: plan.startDate,
-        totalWeeks,
-        currentWeek,
-        phase,
-        feasibilityWarning: config?.feasibilityWarning ?? null,
-      },
+      plan: { id: plan.id, raceDate: plan.raceDate, startDate: plan.startDate, ...meta },
       plannedWorkouts: plannedWorkouts.map((w) => ({
         id: w.id,
         day: w.day,
@@ -366,6 +372,52 @@ const getDashboard = protectedProcedure
     };
   });
 
+const getPlanOverview = protectedProcedure
+  .input(z.void())
+  .output(getPlanOverviewOutputSchema)
+  .handler(async ({ context }) => {
+    const user = await getOrCreateUser(context.auth.userId);
+
+    const plan = await prisma.trainingPlan.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!plan) {
+      return { plan: null, weeks: [] };
+    }
+
+    const meta = await computePlanMeta(plan);
+    const allPlannedWorkouts = await prisma.plannedWorkout.findMany({ where: { planId: plan.id } });
+
+    const byWeek = new Map<number, typeof allPlannedWorkouts>();
+    for (const w of allPlannedWorkouts) {
+      const bucket = byWeek.get(w.weekNumber);
+      if (bucket) bucket.push(w);
+      else byWeek.set(w.weekNumber, [w]);
+    }
+
+    const weeks = Array.from(byWeek.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([weekNumber, workouts]) => ({
+        weekNumber,
+        workouts: workouts
+          .slice()
+          .sort((a, b) => WEEK_DAY_ORDER.indexOf(a.day) - WEEK_DAY_ORDER.indexOf(b.day))
+          .map((w) => ({
+            id: w.id,
+            day: w.day,
+            type: w.type,
+            prescription: w.prescription as WorkoutPrescription,
+          })),
+      }));
+
+    return {
+      plan: { id: plan.id, raceDate: plan.raceDate, startDate: plan.startDate, ...meta },
+      weeks,
+    };
+  });
+
 export const router = {
   ping,
   me,
@@ -374,6 +426,7 @@ export const router = {
   getDashboard,
   getSessionHistory,
   getRunningProgress,
+  getPlanOverview,
 };
 
 export type AppRouter = typeof router;

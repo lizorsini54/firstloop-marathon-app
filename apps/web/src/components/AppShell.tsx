@@ -4,10 +4,11 @@ import { Link, useLocation } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/plan", label: "Plan" },
   { to: "/log", label: "Log" },
   { to: "/history", label: "History" },
   { to: "/progress", label: "Progress" },
-  { to: "/intake", label: "Plan" },
+  { to: "/intake", label: "Goal" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
