@@ -73,7 +73,7 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
           EOF
 
-      - run: packages/db/node_modules/.bin/prisma migrate deploy
+      - run: bun run db:deploy
         working-directory: packages/db
         env:
           DATABASE_URL: postgresql://firstloop:firstloop@localhost:5432/firstloop
