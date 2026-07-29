@@ -2,6 +2,8 @@ import { prisma } from "@firstloop/db";
 import type { Prisma } from "@firstloop/db";
 import { computePhaseBoundaries, generatePlan, phaseForWeek, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
 import type { WorkoutPrescription } from "@firstloop/plan-engine";
+import { gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
+import type { WeekContext } from "@firstloop/strength-engine";
 import { z } from "zod";
 import { getOrCreateUser } from "./lib/getOrCreateUser";
 import { protectedProcedure, publicProcedure } from "./procedures";
@@ -12,6 +14,7 @@ import { meOutputSchema } from "./schemas/me";
 import { pingInputSchema, pingOutputSchema } from "./schemas/ping";
 import { createPlanInputSchema, createPlanOutputSchema } from "./schemas/plan";
 import { logSessionInputSchema, logSessionOutputSchema } from "./schemas/session";
+import type { SetLogEntry } from "./schemas/session";
 
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -50,10 +53,41 @@ const createPlan = protectedProcedure
       raceDate: input.raceDate,
       startDate,
       currentWeeklyMileage: input.currentWeeklyMileage,
-      liftDaysPerWeek: input.liftDaysPerWeek,
       bikeDaysPerWeek: input.bikeDaysPerWeek,
       injuryFlags: input.injuryFlags,
     });
+
+    // Strength sessions are scheduled around the running plan's fixed days:
+    // REST-day placeholders become the strength scheduler's available slots
+    // (RUN and BIKE days are already spoken for), and any REST row it
+    // actually claims gets dropped before persisting.
+    const boundaries = computePhaseBoundaries(totalWeeks);
+    const weekContexts: WeekContext[] = [];
+    for (let week = 1; week <= totalWeeks; week++) {
+      const weekWorkouts = workouts.filter((w) => w.weekNumber === week);
+      const phase = phaseForWeek(week, boundaries);
+      weekContexts.push({
+        weekNumber: week,
+        availableDays: weekWorkouts.filter((w) => w.type === "REST").map((w) => w.day),
+        interferenceDays: weekWorkouts
+          .filter(
+            (w) =>
+              w.type === "RUN" &&
+              (w.prescription.quality === "long" ||
+                w.prescription.quality === "tempo" ||
+                w.prescription.quality === "intervals"),
+          )
+          .map((w) => w.day),
+        isPeakMileageWeek: phase === "peak",
+        isDownDeloadWeek: phase === "taper",
+      });
+    }
+
+    const strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+    const claimedDays = new Set(strengthWorkouts.map((w) => `${w.weekNumber}-${w.day}`));
+    const runningWorkouts = workouts.filter(
+      (w) => !(w.type === "REST" && claimedDays.has(`${w.weekNumber}-${w.day}`)),
+    );
 
     const plan = await prisma.$transaction(async (tx) => {
       const created = await tx.trainingPlan.create({
@@ -63,7 +97,6 @@ const createPlan = protectedProcedure
           startDate,
           config: {
             currentWeeklyMileage: input.currentWeeklyMileage,
-            liftDaysPerWeek: input.liftDaysPerWeek,
             bikeDaysPerWeek: input.bikeDaysPerWeek,
             injuryFlags: input.injuryFlags,
           },
@@ -71,13 +104,22 @@ const createPlan = protectedProcedure
       });
 
       await tx.plannedWorkout.createMany({
-        data: workouts.map((w) => ({
-          planId: created.id,
-          weekNumber: w.weekNumber,
-          day: w.day,
-          type: w.type,
-          prescription: w.prescription as Prisma.InputJsonValue,
-        })),
+        data: [
+          ...runningWorkouts.map((w) => ({
+            planId: created.id,
+            weekNumber: w.weekNumber,
+            day: w.day,
+            type: w.type,
+            prescription: w.prescription as Prisma.InputJsonValue,
+          })),
+          ...strengthWorkouts.map((w) => ({
+            planId: created.id,
+            weekNumber: w.weekNumber,
+            day: w.day,
+            type: "LIFT" as const,
+            prescription: w.prescription as unknown as Prisma.InputJsonValue,
+          })),
+        ],
       });
 
       return created;
@@ -102,6 +144,7 @@ const logSession = protectedProcedure
         rpe: input.rpe,
         notes: input.notes,
         plannedWorkoutId: input.plannedWorkoutId,
+        setLog: input.setLog,
       },
     });
 
@@ -129,6 +172,7 @@ const getSessionHistory = protectedProcedure
         rpe: s.rpe,
         notes: s.notes,
         plannedWorkoutId: s.plannedWorkoutId,
+        setLog: s.setLog as SetLogEntry[] | null,
       })),
     };
   });
@@ -228,6 +272,7 @@ const getDashboard = protectedProcedure
         rpe: s.rpe,
         notes: s.notes,
         plannedWorkoutId: s.plannedWorkoutId,
+        setLog: s.setLog as SetLogEntry[] | null,
       })),
       weeklyMileageTotal,
       weeklyMileageHistory,

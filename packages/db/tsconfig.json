@@ -5,5 +5,5 @@
     "rootDir": "."
   },
   "include": ["src", "prisma"],
-  "references": [{ "path": "../plan-engine" }]
+  "references": [{ "path": "../plan-engine" }, { "path": "../strength-engine" }]
 }

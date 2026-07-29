@@ -5,5 +5,9 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "references": [{ "path": "../db" }, { "path": "../plan-engine" }]
+  "references": [
+    { "path": "../db" },
+    { "path": "../plan-engine" },
+    { "path": "../strength-engine" }
+  ]
 }

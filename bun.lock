@@ -71,6 +71,7 @@
         "@clerk/express": "^1.4.0",
         "@firstloop/db": "workspace:*",
         "@firstloop/plan-engine": "workspace:*",
+        "@firstloop/strength-engine": "workspace:*",
         "@orpc/server": "^1.0.0",
         "zod": "^3.24.1",
       },
@@ -83,6 +84,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@firstloop/plan-engine": "workspace:*",
+        "@firstloop/strength-engine": "workspace:*",
         "@prisma/client": "^6.3.1",
       },
       "devDependencies": {
@@ -91,6 +93,10 @@
     },
     "packages/plan-engine": {
       "name": "@firstloop/plan-engine",
+      "version": "0.0.0",
+    },
+    "packages/strength-engine": {
+      "name": "@firstloop/strength-engine",
       "version": "0.0.0",
     },
   },
@@ -230,6 +236,8 @@
     "@firstloop/plan-engine": ["@firstloop/plan-engine@workspace:packages/plan-engine"],
 
     "@firstloop/server": ["@firstloop/server@workspace:apps/server"],
+
+    "@firstloop/strength-engine": ["@firstloop/strength-engine@workspace:packages/strength-engine"],
 
     "@firstloop/web": ["@firstloop/web@workspace:apps/web"],
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { workoutTypeSchema } from "./enums";
+import { setLogEntrySchema } from "./session";
 
 const sessionHistoryEntrySchema = z.object({
   id: z.string(),
@@ -10,6 +11,7 @@ const sessionHistoryEntrySchema = z.object({
   rpe: z.number(),
   notes: z.string().nullable(),
   plannedWorkoutId: z.string().nullable(),
+  setLog: z.array(setLogEntrySchema).nullable(),
 });
 
 export const getSessionHistoryOutputSchema = z.object({

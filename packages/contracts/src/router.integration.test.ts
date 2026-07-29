@@ -79,7 +79,6 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
-        liftDaysPerWeek: 2,
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
@@ -102,7 +101,6 @@ describe("getOrCreateUser (via createPlan)", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 15,
-        liftDaysPerWeek: 1,
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
@@ -124,7 +122,6 @@ describe("createPlan -> logSession", () => {
       {
         raceDate: new Date("2027-06-01"),
         currentWeeklyMileage: 20,
-        liftDaysPerWeek: 2,
         bikeDaysPerWeek: 0,
         injuryFlags: [],
       },
