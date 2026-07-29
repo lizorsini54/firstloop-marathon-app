@@ -259,3 +259,93 @@ describe("getPlanOverview", () => {
     expect(overview.weeks).toEqual([]);
   });
 });
+
+describe("day-economy warning", () => {
+  test("flags a plan whose running/bike days leave no room for the strength program", async () => {
+    // 7 running days claims every day of the week, leaving zero room for
+    // Glute Gladiator despite "program" mode being requested.
+    const clerkId = "clerk_test_day_economy_conflict";
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 40,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 7,
+        strengthMode: "program",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    expect(dashboard.plan?.strengthWarning).not.toBeNull();
+  });
+
+  test("stays quiet when running/bike days leave enough room for the strength program", async () => {
+    const clerkId = "clerk_test_day_economy_roomy";
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 3,
+        strengthMode: "program",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+
+    expect(dashboard.plan?.strengthWarning).toBeNull();
+  });
+});
+
+describe("injury-aware strength scheduling", () => {
+  test("a Knee flag substitutes Back Squat and drops Bulgarian Split Squat across the whole plan, and the injury note persists past creation", async () => {
+    const clerkId = "clerk_test_injury_knee";
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 4,
+        strengthMode: "program",
+        bikeDaysPerWeek: 1,
+        injuryFlags: ["Knee"],
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const overview = await call(router.getPlanOverview, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+    const allExerciseNames = overview.weeks
+      .flatMap((w) => w.workouts)
+      .flatMap((w) => w.prescription.exercises ?? [])
+      .map((e) => e.name);
+
+    expect(allExerciseNames).toContain("Leg Press");
+    expect(allExerciseNames).not.toContain("Barbell Back Squat");
+    expect(allExerciseNames).not.toContain("Dumbbell Bulgarian Split Squat");
+    expect(allExerciseNames).not.toContain("Dumbbell Walking Lunge");
+
+    // Re-fetch via getDashboard (a separate call, not createPlan's immediate
+    // response) — the regression guard for "shown once, then gone."
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId: clerkId } },
+    });
+    expect(dashboard.plan?.injuryWarning).not.toBeNull();
+    expect(dashboard.plan?.injuryWarning).toContain("Knee");
+  });
+});

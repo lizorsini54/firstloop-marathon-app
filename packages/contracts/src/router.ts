@@ -9,8 +9,13 @@ import {
   WEEK_DAY_ORDER,
 } from "@firstloop/plan-engine";
 import type { WorkoutPrescription } from "@firstloop/plan-engine";
-import { buildCustomProgram, gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
-import type { GeneratedStrengthWorkout, WeekContext } from "@firstloop/strength-engine";
+import {
+  buildCustomProgram,
+  checkDayEconomy,
+  gluteGladiator,
+  scheduleStrengthSessions,
+} from "@firstloop/strength-engine";
+import type { GeneratedStrengthWorkout, StrengthProgram, WeekContext } from "@firstloop/strength-engine";
 import { z } from "zod";
 import { getOrCreateUser } from "./lib/getOrCreateUser";
 import { protectedProcedure, publicProcedure } from "./procedures";
@@ -66,9 +71,37 @@ async function computePlanMeta(plan: { id: string; startDate: Date; config: Pris
   const boundaries = computePhaseBoundaries(totalWeeks);
   const phase = phaseForWeek(currentWeek, boundaries);
 
-  const config = plan.config as { feasibilityWarning?: string | null } | null;
+  const config = plan.config as {
+    feasibilityWarning?: string | null;
+    strengthWarning?: string | null;
+    injuryWarning?: string | null;
+  } | null;
 
-  return { totalWeeks, currentWeek, phase, feasibilityWarning: config?.feasibilityWarning ?? null };
+  return {
+    totalWeeks,
+    currentWeek,
+    phase,
+    feasibilityWarning: config?.feasibilityWarning ?? null,
+    strengthWarning: config?.strengthWarning ?? null,
+    injuryWarning: config?.injuryWarning ?? null,
+  };
+}
+
+/**
+ * Consolidates the running-side per-flag injury warnings (plan-engine's
+ * own, already-worded) with a strength-side adaptation note, so Dashboard/
+ * Plan can show one persisted sentence instead of the transient message
+ * createPlan returns once and never again. Only "Knee" currently has a
+ * real, documented exercise-level response (see programs/glute-gladiator.ts)
+ * — other flags get an honest "not modified" note rather than an invented one.
+ */
+function buildInjuryWarning(injuryFlags: string[], runningWarnings: string[]): string | null {
+  if (injuryFlags.length === 0) return null;
+  const hasKnee = injuryFlags.some((f) => f.toLowerCase() === "knee");
+  const strengthNote = hasKnee
+    ? "Knee-loading strength exercises (back squat, Bulgarian split squat, walking lunge) were substituted or reduced for your flagged knee."
+    : "Strength exercises weren't modified for this — mention any discomfort to a coach.";
+  return [...runningWarnings, strengthNote].join(" ");
 }
 
 const ping = publicProcedure
@@ -134,12 +167,22 @@ const createPlan = protectedProcedure
     }
 
     let strengthWorkouts: GeneratedStrengthWorkout[] = [];
+    let strengthProgram: StrengthProgram | null = null;
     if (input.strengthMode === "program") {
-      strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+      strengthProgram = gluteGladiator;
+      strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts, input.injuryFlags);
     } else if (input.strengthMode === "custom") {
-      const customProgram = buildCustomProgram(input.customLiftDaysPerWeek ?? 1);
-      strengthWorkouts = scheduleStrengthSessions(customProgram, weekContexts);
+      strengthProgram = buildCustomProgram(input.customLiftDaysPerWeek ?? 1);
+      strengthWorkouts = scheduleStrengthSessions(strengthProgram, weekContexts, input.injuryFlags);
     }
+
+    // Day-economy check: only meaningful once a real program is scheduled —
+    // "none" mode has nothing to check against.
+    const strengthWarning = strengthProgram
+      ? checkDayEconomy(strengthProgram, weekContexts, strengthWorkouts).warning
+      : null;
+
+    const injuryWarning = buildInjuryWarning(input.injuryFlags, warnings);
 
     const claimedDays = new Set(strengthWorkouts.map((w) => `${w.weekNumber}-${w.day}`));
     const runningWorkouts = workouts.filter(
@@ -161,6 +204,8 @@ const createPlan = protectedProcedure
             bikeDaysPerWeek: input.bikeDaysPerWeek,
             injuryFlags: input.injuryFlags,
             feasibilityWarning,
+            strengthWarning,
+            injuryWarning,
           },
         },
       });
