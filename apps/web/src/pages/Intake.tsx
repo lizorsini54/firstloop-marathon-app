@@ -26,7 +26,6 @@ export function Intake() {
   const navigate = useNavigate();
   const [raceDate, setRaceDate] = useState("");
   const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState("");
-  const [liftDaysPerWeek, setLiftDaysPerWeek] = useState("2");
   const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("0");
   const [checkedInjuries, setCheckedInjuries] = useState<string[]>([]);
   const [otherInjury, setOtherInjury] = useState("");
@@ -50,7 +49,6 @@ export function Intake() {
     const result = createPlanInputSchema.safeParse({
       raceDate,
       currentWeeklyMileage: Number(currentWeeklyMileage),
-      liftDaysPerWeek: Number(liftDaysPerWeek),
       bikeDaysPerWeek: Number(bikeDaysPerWeek),
       injuryFlags,
     });
@@ -138,24 +136,6 @@ export function Intake() {
               {fieldErrors.currentWeeklyMileage && (
                 <p className="text-sm text-destructive">{fieldErrors.currentWeeklyMileage}</p>
               )}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="liftDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Lift days per week
-              </Label>
-              <Select value={liftDaysPerWeek} onValueChange={setLiftDaysPerWeek}>
-                <SelectTrigger id="liftDaysPerWeek" className="w-full font-mono">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAY_COUNT_OPTIONS.map((n) => (
-                    <SelectItem key={n} value={String(n)} className="font-mono">
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">
