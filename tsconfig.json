@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/db" },
     { "path": "./packages/plan-engine" },
+    { "path": "./packages/strength-engine" },
     { "path": "./packages/contracts" },
     { "path": "./apps/server" },
     { "path": "./apps/web" }
