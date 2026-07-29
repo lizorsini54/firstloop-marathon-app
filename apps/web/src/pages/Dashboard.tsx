@@ -6,6 +6,7 @@ import { PhaseArc } from "../components/PhaseArc";
 import { formatUTCDate } from "../lib/date";
 import { titleCase } from "../lib/format";
 import { orpc } from "../lib/orpc";
+import { describePrescription } from "../lib/prescription";
 
 type LoadState =
   | { status: "loading" }
@@ -20,26 +21,6 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
-
-function describePrescription(
-  p: DashboardOutput["plannedWorkouts"][number]["prescription"],
-): string {
-  if (p.exercises && p.exercises.length > 0) {
-    const parts = [p.displayName, p.block ? `${p.block} block` : undefined, `${p.exercises.length} exercises`];
-    return parts.filter(Boolean).join(" · ");
-  }
-  if (p.displayName) {
-    // A custom lift session with no prescribed exercises — real data, just
-    // nothing to enumerate, not a placeholder.
-    return p.displayName;
-  }
-  const parts: string[] = [];
-  if (p.distanceMiles) parts.push(`${p.distanceMiles}mi`);
-  if (p.durationMin) parts.push(`${p.durationMin}min`);
-  if (p.quality) parts.push(p.quality);
-  if (p.reducedVolume) parts.push("reduced volume");
-  return parts.join(" · ") || "—";
-}
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -116,7 +97,15 @@ export function Dashboard() {
       </header>
 
       <section className="mt-8">
-        <h2 className={labelClass}>This week's plan</h2>
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className={labelClass}>This week's plan</h2>
+          <Link
+            to="/plan"
+            className="rounded-sm text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            View full plan
+          </Link>
+        </div>
         <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
           {plannedWorkouts.map((w) => (
             <li
