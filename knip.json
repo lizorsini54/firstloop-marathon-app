@@ -3,7 +3,9 @@
   "workspaces": {
     ".": {},
     "apps/server": {},
-    "apps/web": {},
+    "apps/web": {
+      "ignore": ["src/components/ui/**"]
+    },
     "packages/contracts": {},
     "packages/db": {},
     "packages/plan-engine": {}

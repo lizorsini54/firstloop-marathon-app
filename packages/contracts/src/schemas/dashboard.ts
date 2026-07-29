@@ -1,5 +1,5 @@
-import { DayOfWeek, WorkoutType } from "@firstloop/db";
 import { z } from "zod";
+import { dayOfWeekSchema, workoutTypeSchema } from "./enums";
 
 const prescriptionSchema = z.object({
   distanceMiles: z.number().optional(),
@@ -11,15 +11,15 @@ const prescriptionSchema = z.object({
 
 const plannedWorkoutSchema = z.object({
   id: z.string(),
-  day: z.nativeEnum(DayOfWeek),
-  type: z.nativeEnum(WorkoutType),
+  day: dayOfWeekSchema,
+  type: workoutTypeSchema,
   prescription: prescriptionSchema,
 });
 
 const sessionLogSchema = z.object({
   id: z.string(),
   date: z.date(),
-  type: z.nativeEnum(WorkoutType),
+  type: workoutTypeSchema,
   distanceMiles: z.number().nullable(),
   durationMin: z.number(),
   rpe: z.number(),

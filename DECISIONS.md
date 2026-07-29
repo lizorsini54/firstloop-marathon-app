@@ -49,3 +49,9 @@ Architecture and scope decisions, in the order they were made. Two lines each: w
 **Plan `startDate` truncated to midnight UTC at creation**: found via manual testing — `new Date()` (with time-of-day) as `startDate` combined with midnight-aligned session-log dates (from a plain `<input type="date">`) meant a session logged on a plan's creation day could fall *before* that plan's own week boundary and silently vanish from "this week." Both now align to day boundaries.
 
 **Seed script hardcodes the demo user's email instead of calling Clerk's API**: avoids `packages/db` needing `@clerk/express`/`CLERK_SECRET_KEY` just to run a one-off script — the real `getOrCreateUser` path (used by every actual request) still fetches the authoritative email from Clerk on first real login.
+
+## Checkpoint 4
+
+**`packages/contracts` gets an explicit `exports` map with a `./schemas/*` subpath**: the intake form needed a real (value, not type) import of `createPlanInputSchema` for client-side validation. Importing anything through the main barrel (`@firstloop/contracts`) risks pulling in `router.ts` — which imports `@firstloop/db`, and `db`'s `client.ts` instantiates a real `PrismaClient()` at module scope. Whether a bundler tree-shakes that away is not something to gamble on for "does server code end up in the browser." The `./schemas/*` subpath resolves straight to a schema file, never touching `router.ts`. Verified by grepping the built client bundle for Prisma/Clerk-backend strings (zero matches).
+
+**`packages/contracts`'s schemas no longer import Prisma enum values from `@firstloop/db`**: `session.ts`/`dashboard.ts` used `z.nativeEnum(WorkoutType)` from `@firstloop/db` — same PrismaClient-instantiation risk as above, since importing the enum meant loading `db`'s `client.ts` module. Replaced with local `z.enum([...])` schemas (`schemas/enums.ts`) mirroring the same values, same pattern already established for `packages/plan-engine`.
