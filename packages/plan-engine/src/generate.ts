@@ -13,7 +13,6 @@ const MIN_TOTAL_WEEKS = 4;
 
 const LONG_RUN_DAY: DayOfWeek = "SUNDAY";
 const QUALITY_DAYS: DayOfWeek[] = ["WEDNESDAY", "FRIDAY"];
-const LIFT_CANDIDATE_DAYS: DayOfWeek[] = ["MONDAY", "TUESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 export const WEEK_DAY_ORDER: DayOfWeek[] = [
   "MONDAY",
   "TUESDAY",
@@ -105,18 +104,6 @@ function workoutsForWeek(
       notes: i === 0 ? "Tempo run" : "Interval session",
     });
   }
-
-  const liftDays = LIFT_CANDIDATE_DAYS.filter((d) => !used.has(d)).slice(
-    0,
-    intake.liftDaysPerWeek,
-  );
-  liftDays.forEach((day, i) => {
-    const reduced = phase === "build" && i === 0;
-    make(day, "LIFT", {
-      reducedVolume: reduced,
-      notes: reduced ? "Lift session (reduced volume — long run week)" : "Lift session",
-    });
-  });
 
   const bikeDays = WEEK_DAY_ORDER.filter((d) => !used.has(d)).slice(0, intake.bikeDaysPerWeek);
   bikeDays.forEach((day) => {

@@ -18,7 +18,6 @@ export interface PlanIntake {
   raceDate: Date;
   startDate: Date;
   currentWeeklyMileage: number;
-  liftDaysPerWeek: number;
   bikeDaysPerWeek: number;
   injuryFlags: string[];
 }
