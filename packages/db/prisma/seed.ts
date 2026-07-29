@@ -1,4 +1,11 @@
-import { computePhaseBoundaries, generatePlan, phaseForWeek, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
+import {
+  checkFeasibility,
+  computePhaseBoundaries,
+  estimateAvailableWeeks,
+  generatePlan,
+  phaseForWeek,
+  WEEK_DAY_ORDER,
+} from "@firstloop/plan-engine";
 import { gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
 import type { WeekContext } from "@firstloop/strength-engine";
 import type { Prisma, WorkoutType } from "../src/client";
@@ -57,12 +64,21 @@ async function main() {
     raceDate: RACE_DATE,
     startDate,
     currentWeeklyMileage: 22,
+    // Comfortable, not a warning scenario — the demo persona has finished a
+    // marathon before and the race date is far out. Create a plan with a
+    // near-term race date and "first marathon" to see the warning trigger.
+    runningExperience: "has_finished_one" as const,
+    runningDaysPerWeek: 4,
     strengthMode: "program" as const,
     bikeDaysPerWeek: 1,
     injuryFlags: [] as string[],
   };
 
   const { totalWeeks, workouts } = generatePlan(intake);
+  const { warning: feasibilityWarning } = checkFeasibility(
+    estimateAvailableWeeks(intake.raceDate, intake.startDate),
+    intake.runningExperience,
+  );
 
   // Same orchestration as createPlan in packages/contracts/src/router.ts:
   // REST-day placeholders become the strength scheduler's available slots,
@@ -104,9 +120,12 @@ async function main() {
       startDate: intake.startDate,
       config: {
         currentWeeklyMileage: intake.currentWeeklyMileage,
+        runningExperience: intake.runningExperience,
+        runningDaysPerWeek: intake.runningDaysPerWeek,
         strengthMode: intake.strengthMode,
         bikeDaysPerWeek: intake.bikeDaysPerWeek,
         injuryFlags: intake.injuryFlags,
+        feasibilityWarning,
       },
     },
   });

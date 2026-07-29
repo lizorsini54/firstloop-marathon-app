@@ -38,17 +38,24 @@ The seed script (`packages/db/prisma/seed.ts`) hardcodes a specific Clerk test a
 
 ## Architecture
 
-Bun workspaces monorepo, four packages/apps with a strict one-way dependency graph:
+Bun workspaces monorepo, a strict one-way dependency graph:
 
 ```
-packages/plan-engine   — zero dependencies (not even @firstloop/db)
-packages/db             — depends on plan-engine (seed script)
-packages/contracts      — depends on db + plan-engine + @clerk/express
-apps/server              — depends on contracts
-apps/web                  — depends on contracts (type-only for the router; value-only for ./schemas/*)
+packages/scheduling     — zero dependencies (generic day-placement primitive)
+packages/plan-engine    — depends on scheduling only (not even @firstloop/db)
+packages/strength-engine — depends on scheduling only
+packages/db              — depends on plan-engine + strength-engine (seed script)
+packages/contracts       — depends on db + plan-engine + strength-engine + @clerk/express
+apps/server                — depends on contracts
+apps/web                    — depends on contracts (type-only for the router; value-only for ./schemas/*)
+                              and directly on plan-engine (live feasibility check on Intake)
 ```
 
-**`packages/plan-engine`** is the plan-generation logic: pure functions, no DB, no network. `generatePlan(intake)` implements base/build/peak/taper periodization and returns the full week-by-week workout schedule plus any injury-related warnings. Defines its own `DayOfWeek`/`WorkoutType` string-literal types rather than importing Prisma's enums — kept genuinely standalone on purpose (see DECISIONS.md, Checkpoint 3) so it stays swappable and has no risk of pulling `packages/db` into any consumer's bundle.
+**`packages/scheduling`** is the generic day-of-week placement primitive extracted from strength-engine's original scheduler (Checkpoint 11): `placeSlots(slots, availableDays, interferenceDays, minDaysBetweenGroupedSessions)` places a set of named `Slot`s (`respectsInterference`/`spacingGroup`) into a week, three-tier fallback (full spacing → interference-respecting → any day, never silently dropping a slot). Both `plan-engine` (run frequency) and `strength-engine` (lift session placement) call it — one placement algorithm, two independent callers with different data.
+
+**`packages/plan-engine`** is the running-plan-generation logic: pure functions, no DB, no network. `generatePlan(intake)` implements base/build/peak/taper periodization and returns the full week-by-week workout schedule (long run + phase-appropriate quality/easy runs, placed via `@firstloop/scheduling`) plus any injury-related warnings. `estimateAvailableWeeks`/`checkFeasibility` are the timeline-feasibility check (a stated coaching judgment call, not hard science — see DECISIONS.md). Defines its own `WorkoutType` string-literal type rather than importing Prisma's enum (`DayOfWeek` now comes from `@firstloop/scheduling` instead) — kept genuinely standalone on purpose (see DECISIONS.md, Checkpoint 3) so it stays swappable and has no risk of pulling `packages/db` into any consumer's bundle.
+
+**`packages/strength-engine`** is the strength-program logic, same "pure, swappable, zero DB dependency" shape as `plan-engine`: `scheduleStrengthSessions(program, weeks)` resolves each week's block (with a deload override when the running plan is tapering) and places that program's sessions via `@firstloop/scheduling`. `programs/glute-gladiator.ts` is the one real program (transcribed from `docs/strength-program.md`); `programs/custom.ts` builds a minimal synthetic program on the fly for "custom" strength mode — same scheduler, no second placement system.
 
 **`packages/contracts`** is the shared typed contract: Zod schemas + an oRPC router, with the actual procedure handlers (including Prisma calls) living directly in `router.ts` rather than a separate contract-first layer. `apps/server` mounts the router as-is. `apps/web` only ever imports `AppRouter`'s *type* from the package root (`import type`), and imports individual Zod schemas *as values* from the `./schemas/*` subpath (`@firstloop/contracts/schemas/plan`) — never from the root barrel for a value import. The root barrel re-exports `router`, which imports `@firstloop/db`, whose `client.ts` instantiates a real `PrismaClient()` at module scope; a value import through the barrel risks that ending up in the browser bundle depending on tree-shaking. The `./schemas/*` subpath resolves straight to a schema file and never touches `router.ts`. This is a real constraint, not a style preference — see DECISIONS.md, Checkpoint 4, for how it was caught (verified by grepping the built client bundle).
 
@@ -64,7 +71,7 @@ Auth: `protectedProcedure` (in `procedures.ts`) wraps `publicProcedure` with mid
 
 ## Testing
 
-`bun test` (Bun's built-in runner, Jest-compatible API) — no Vitest. Currently only `packages/plan-engine` has tests (`phases.test.ts`, `generate.test.ts`); `dist/` is excluded from discovery via `--path-ignore-patterns` in the root `test` script, since `tsc -b`'s compiled output would otherwise get picked up alongside the source and silently double every test run.
+`bun test` (Bun's built-in runner, Jest-compatible API) — no Vitest. Unit tests live in `packages/scheduling`, `packages/plan-engine`, and `packages/strength-engine`; `packages/contracts/src/router.integration.test.ts` (Testcontainers, real Postgres) is excluded from the fast `bun run test` path and run separately via `bun run test:integration`. `dist/` is excluded from discovery via `--path-ignore-patterns` in the root `test` script, since `tsc -b`'s compiled output would otherwise get picked up alongside the source and silently double every test run.
 
 ## Decisions log
 
