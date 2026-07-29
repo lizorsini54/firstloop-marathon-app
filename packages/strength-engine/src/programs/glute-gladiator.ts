@@ -50,6 +50,9 @@ export const gluteGladiator: StrengthProgram = {
           sets: 3,
           reps: "8-10/leg",
           notes: "Glute-biased: longer stride, slight forward lean.",
+          // No documented alternative in the swap table for this movement's
+          // knee flexion under load — dropped rather than a guessed swap.
+          dropForFlags: ["Knee"],
         },
         {
           name: "45° Back Extension (weighted)",
@@ -130,6 +133,16 @@ export const gluteGladiator: StrengthProgram = {
           usesBlockReps: true,
           isMainLift: true,
           notes: "Primary progression lift. Fills the quad gap from your current split.",
+          // The swap table's "Back Squat -> Front Squat, Hack Squat, or Leg
+          // Press" — of those three, Leg Press is the one actually
+          // defensible for a knee flag (fixed path, less stabilization
+          // demand); Front/Hack Squat aren't meaningfully easier on the knee.
+          substituteForFlag: {
+            flag: "Knee",
+            replacementName: "Leg Press",
+            replacementNotes:
+              "Swapped for Back Squat — documented equipment alternative in the program's swap table, also generally less knee shear. Still the day's main lift.",
+          },
         },
         {
           name: "Barbell Sumo Deadlift",
@@ -137,7 +150,14 @@ export const gluteGladiator: StrengthProgram = {
           reps: "6-8",
           notes: "Kept from your current program — you're strong here. Moderate loads, crisp reps.",
         },
-        { name: "Dumbbell Walking Lunge", sets: 3, reps: "10/leg" },
+        {
+          name: "Dumbbell Walking Lunge",
+          sets: 3,
+          reps: "10/leg",
+          // Same as Bulgarian Split Squat — no documented alternative, so
+          // dropped rather than a guessed swap.
+          dropForFlags: ["Knee"],
+        },
         {
           name: "Lying or Seated Leg Curl",
           sets: 3,
@@ -222,6 +242,8 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "8-10",
       accessoryReps: "10-15",
       intent: "Hypertrophy, movement quality, base volume",
+      intensityRank: 1,
+      isPeakMileageCap: false,
     },
     {
       name: "Deload",
@@ -230,6 +252,8 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "8 (light)",
       accessoryReps: "12 (light)",
       intent: "60-70% of week 3 loads, drop 1 set everywhere",
+      intensityRank: 0,
+      isPeakMileageCap: false,
     },
     {
       name: "Strengthen",
@@ -238,6 +262,11 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "6-8",
       accessoryReps: "8-12",
       intent: "Heavier loading, same movements",
+      intensityRank: 2,
+      // The block a peak-mileage running week caps down to when the raw
+      // cycle position would otherwise land on something heavier (Peak,
+      // Test/Deload) — see schedule.ts's peakMileageCapBlock.
+      isPeakMileageCap: true,
     },
     {
       name: "Deload",
@@ -246,6 +275,8 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "6 (light)",
       accessoryReps: "10 (light)",
       intent: "Same deload rules",
+      intensityRank: 0,
+      isPeakMileageCap: false,
     },
     {
       name: "Peak",
@@ -254,6 +285,8 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "4-6",
       accessoryReps: "8-10",
       intent: "Heaviest work of the cycle",
+      intensityRank: 3,
+      isPeakMileageCap: false,
     },
     {
       name: "Test/Deload",
@@ -262,6 +295,12 @@ export const gluteGladiator: StrengthProgram = {
       mainLiftReps: "Work to a heavy top set on hip thrust, squat, RDL, bench, row",
       accessoryReps: "—",
       intent: "Set new rep maxes, then rest",
+      // isDeload (volume drops) but this is the single heaviest-effort week
+      // in the cycle by actual load — near-max top sets, not a light week.
+      // Ranked above Peak deliberately; isDeload and intensityRank are
+      // separate axes for exactly this reason.
+      intensityRank: 4,
+      isPeakMileageCap: false,
     },
   ],
 };
