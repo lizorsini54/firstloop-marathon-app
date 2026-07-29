@@ -5,6 +5,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { setClerkTokenGetter } from "./lib/orpc";
 import { Dashboard } from "./pages/Dashboard";
+import { History } from "./pages/History";
 import { Home } from "./pages/Home";
 import { Intake } from "./pages/Intake";
 import { LogSession } from "./pages/LogSession";
@@ -59,6 +60,14 @@ export function App() {
           element={
             <RequireAuth>
               <LogSession />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <RequireAuth>
+              <History />
             </RequireAuth>
           }
         />

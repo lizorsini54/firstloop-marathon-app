@@ -27,6 +27,12 @@ const sessionLogSchema = z.object({
   plannedWorkoutId: z.string().nullable(),
 });
 
+const weeklyMileageSchema = z.object({
+  weekNumber: z.number().int(),
+  plannedMiles: z.number(),
+  actualMiles: z.number(),
+});
+
 export const dashboardOutputSchema = z.object({
   plan: z
     .object({
@@ -41,6 +47,7 @@ export const dashboardOutputSchema = z.object({
   plannedWorkouts: z.array(plannedWorkoutSchema),
   sessionLogs: z.array(sessionLogSchema),
   weeklyMileageTotal: z.number(),
+  weeklyMileageHistory: z.array(weeklyMileageSchema),
 });
 
 export type DashboardOutput = z.infer<typeof dashboardOutputSchema>;

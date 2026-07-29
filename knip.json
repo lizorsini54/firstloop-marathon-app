@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
-    ".": {},
+    ".": {
+      "entry": ["e2e/global-setup.ts", "e2e/**/*.spec.ts"]
+    },
     "apps/server": {},
     "apps/web": {
       "ignore": ["src/components/ui/**"]

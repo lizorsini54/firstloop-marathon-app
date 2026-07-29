@@ -18,3 +18,68 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run check
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # Testcontainers spins up its own Postgres via the Docker daemon
+      # already available on GitHub-hosted runners — no services: block needed.
+      - run: bun run test:integration
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: firstloop
+          POSTGRES_PASSWORD: firstloop
+          POSTGRES_DB: firstloop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # Root .env, same shape apps/server, apps/web (via vite envDir) and
+      # packages/db read locally — populated from repo secrets in CI.
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          DATABASE_URL=postgresql://firstloop:firstloop@localhost:5432/firstloop
+          SERVER_PORT=3001
+          WEB_ORIGIN=http://localhost:5173
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          VITE_API_URL=http://localhost:3001
+          VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          EOF
+
+      - run: bun run db:deploy
+        working-directory: packages/db
+        env:
+          DATABASE_URL: postgresql://firstloop:firstloop@localhost:5432/firstloop
+
+      - run: bunx playwright install --with-deps chromium
+
+      - run: bun run test:e2e
+        env:
+          CI: true
