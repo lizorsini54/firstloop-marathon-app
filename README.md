@@ -38,7 +38,7 @@ Notes:
 - `bunx prisma` fetches the latest Prisma from the registry, not the workspace's pinned version — use `packages/db/node_modules/.bin/prisma` directly (or `bun run --filter '@firstloop/db' db:deploy`).
 - `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` on the web service are baked in at **build** time, not runtime — set them before the first build.
 - `WEB_ORIGIN` (server) and `VITE_API_URL` (web) both need the full URL **including scheme** (`https://...`) — Railway's dashboard displays domains without it, and pasting the bare domain silently breaks CORS / URL parsing.
-- Pre-prod and prod use **separate Clerk applications**, not just separate keys within one app — prod's user pool stays clean of pre-prod's test/seed accounts. Each environment's `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY`/`VITE_CLERK_PUBLISHABLE_KEY` point at its own Clerk app.
+- Pre-prod and prod use Clerk's **Development/Production instance split** within a single Clerk Application — prod's user pool stays clean of pre-prod's test/seed accounts. Each environment's `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY`/`VITE_CLERK_PUBLISHABLE_KEY` point at that instance's own keys.
 - Promotion flow: land changes on `main` (pre-prod, auto-deploys, CI-gated), verify there, then open a PR from `main` into `prod` — `prod` has the same required-checks branch protection as `main`, and merging triggers prod's own deploy.
 
 See [DECISIONS.md](./DECISIONS.md) for architecture decisions and their rationale.
