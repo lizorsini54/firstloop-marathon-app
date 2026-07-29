@@ -1,7 +1,10 @@
 import type { DashboardOutput } from "@firstloop/contracts";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { MileageChart } from "../components/MileageChart";
 import { PhaseArc } from "../components/PhaseArc";
+import { formatUTCDate } from "../lib/date";
+import { titleCase } from "../lib/format";
 import { orpc } from "../lib/orpc";
 
 type LoadState =
@@ -17,10 +20,6 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
 
 function describePrescription(
   p: DashboardOutput["plannedWorkouts"][number]["prescription"],
@@ -92,7 +91,7 @@ export function Dashboard() {
           <div className="text-right">
             <p className={labelClass}>Race day</p>
             <p className="font-mono text-lg text-foreground">
-              {new Date(plan.raceDate).toLocaleDateString()}
+              {formatUTCDate(plan.raceDate)}
             </p>
           </div>
         </div>
@@ -132,7 +131,7 @@ export function Dashboard() {
           <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
             {sessionLogs.map((s) => (
               <li key={s.id} className="grid grid-cols-[6rem_4rem_1fr] items-center gap-2 px-4 py-2.5 text-sm">
-                <span className="font-mono">{new Date(s.date).toLocaleDateString()}</span>
+                <span className="font-mono">{formatUTCDate(s.date)}</span>
                 <span>{titleCase(s.type)}</span>
                 <span className="text-right font-mono text-muted-foreground">
                   {s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}
@@ -142,6 +141,13 @@ export function Dashboard() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className={labelClass}>Weekly mileage</h2>
+        <div className="mt-2 rounded-md border border-border bg-card p-3">
+          <MileageChart data={state.data.weeklyMileageHistory} />
+        </div>
       </section>
 
       <Link

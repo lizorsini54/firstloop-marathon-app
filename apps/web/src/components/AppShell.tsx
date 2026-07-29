@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/log", label: "Log" },
+  { to: "/history", label: "History" },
   { to: "/intake", label: "Plan" },
 ];
 

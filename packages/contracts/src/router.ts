@@ -7,6 +7,7 @@ import { getOrCreateUser } from "./lib/getOrCreateUser";
 import { protectedProcedure, publicProcedure } from "./procedures";
 import { dashboardOutputSchema } from "./schemas/dashboard";
 import type { DashboardOutput } from "./schemas/dashboard";
+import { getSessionHistoryOutputSchema } from "./schemas/history";
 import { meOutputSchema } from "./schemas/me";
 import { pingInputSchema, pingOutputSchema } from "./schemas/ping";
 import { createPlanInputSchema, createPlanOutputSchema } from "./schemas/plan";
@@ -107,11 +108,37 @@ const logSession = protectedProcedure
     return { sessionLogId: created.id };
   });
 
+const getSessionHistory = protectedProcedure
+  .input(z.void())
+  .output(getSessionHistoryOutputSchema)
+  .handler(async ({ context }) => {
+    const user = await getOrCreateUser(context.auth.userId);
+
+    const sessionLogs = await prisma.sessionLog.findMany({
+      where: { userId: user.id },
+      orderBy: { date: "desc" },
+    });
+
+    return {
+      sessionLogs: sessionLogs.map((s) => ({
+        id: s.id,
+        date: s.date,
+        type: s.type,
+        distanceMiles: s.distanceMiles,
+        durationMin: s.durationMin,
+        rpe: s.rpe,
+        notes: s.notes,
+        plannedWorkoutId: s.plannedWorkoutId,
+      })),
+    };
+  });
+
 const emptyDashboard: DashboardOutput = {
   plan: null,
   plannedWorkouts: [],
   sessionLogs: [],
   weeklyMileageTotal: 0,
+  weeklyMileageHistory: [],
 };
 
 const getDashboard = protectedProcedure
@@ -145,21 +172,44 @@ const getDashboard = protectedProcedure
     const weekStart = new Date(plan.startDate.getTime() + (currentWeek - 1) * MS_PER_WEEK);
     const weekEnd = new Date(weekStart.getTime() + MS_PER_WEEK);
 
-    const [plannedWorkouts, sessionLogs] = await Promise.all([
-      prisma.plannedWorkout.findMany({
-        where: { planId: plan.id, weekNumber: currentWeek },
-      }),
+    const [allPlannedWorkouts, sessionLogsSincePlanStart] = await Promise.all([
+      prisma.plannedWorkout.findMany({ where: { planId: plan.id } }),
       prisma.sessionLog.findMany({
-        where: { userId: user.id, date: { gte: weekStart, lt: weekEnd } },
+        where: { userId: user.id, date: { gte: plan.startDate } },
         orderBy: { date: "asc" },
       }),
     ]);
 
-    plannedWorkouts.sort(
-      (a, b) => WEEK_DAY_ORDER.indexOf(a.day) - WEEK_DAY_ORDER.indexOf(b.day),
+    const plannedWorkouts = allPlannedWorkouts
+      .filter((w) => w.weekNumber === currentWeek)
+      .sort((a, b) => WEEK_DAY_ORDER.indexOf(a.day) - WEEK_DAY_ORDER.indexOf(b.day));
+
+    const sessionLogs = sessionLogsSincePlanStart.filter(
+      (s) => s.date >= weekStart && s.date < weekEnd,
     );
 
     const weeklyMileageTotal = sessionLogs.reduce((sum, s) => sum + (s.distanceMiles ?? 0), 0);
+
+    const plannedMilesByWeek = new Map<number, number>();
+    for (const w of allPlannedWorkouts) {
+      const miles = (w.prescription as WorkoutPrescription).distanceMiles ?? 0;
+      plannedMilesByWeek.set(w.weekNumber, (plannedMilesByWeek.get(w.weekNumber) ?? 0) + miles);
+    }
+
+    const actualMilesByWeek = new Map<number, number>();
+    for (const s of sessionLogsSincePlanStart) {
+      const week = Math.floor((s.date.getTime() - plan.startDate.getTime()) / MS_PER_WEEK) + 1;
+      actualMilesByWeek.set(week, (actualMilesByWeek.get(week) ?? 0) + (s.distanceMiles ?? 0));
+    }
+
+    const weeklyMileageHistory = Array.from({ length: totalWeeks }, (_, i) => {
+      const weekNumber = i + 1;
+      return {
+        weekNumber,
+        plannedMiles: plannedMilesByWeek.get(weekNumber) ?? 0,
+        actualMiles: actualMilesByWeek.get(weekNumber) ?? 0,
+      };
+    });
 
     return {
       plan: { id: plan.id, raceDate: plan.raceDate, startDate: plan.startDate, totalWeeks, currentWeek, phase },
@@ -180,6 +230,7 @@ const getDashboard = protectedProcedure
         plannedWorkoutId: s.plannedWorkoutId,
       })),
       weeklyMileageTotal,
+      weeklyMileageHistory,
     };
   });
 
@@ -189,6 +240,7 @@ export const router = {
   createPlan,
   logSession,
   getDashboard,
+  getSessionHistory,
 };
 
 export type AppRouter = typeof router;
