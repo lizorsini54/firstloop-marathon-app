@@ -8,3 +8,7 @@ build/
 packages/db/generated/
 .turbo/
 coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
