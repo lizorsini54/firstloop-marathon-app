@@ -50,7 +50,7 @@ function sessionsForWeek(program: StrengthProgram, week: WeekContext): SessionTe
   return program.sessions.filter((s) => !dropped.has(s.name));
 }
 
-function isBlockedForLower(day: DayOfWeek, interferenceDays: DayOfWeek[]): boolean {
+function isBlockedByInterference(day: DayOfWeek, interferenceDays: DayOfWeek[]): boolean {
   const dayIndex = WEEK_DAY_ORDER.indexOf(day);
   const nextDay = WEEK_DAY_ORDER[dayIndex + 1];
   return nextDay !== undefined && interferenceDays.includes(nextDay);
@@ -60,45 +60,50 @@ function placeSessions(
   sessions: SessionTemplate[],
   availableDays: DayOfWeek[],
   interferenceDays: DayOfWeek[],
-  minDaysBetweenLowerSessions: number,
+  minDaysBetweenGroupedSessions: number,
 ): Map<SessionName, DayOfWeek> {
   const sortedDays = WEEK_DAY_ORDER.filter((d) => availableDays.includes(d));
-  const lowerSessions = sessions.filter((s) => s.isLowerBody);
-  const upperSessions = sessions.filter((s) => !s.isLowerBody);
+  const constrainedSessions = sessions.filter((s) => s.respectsInterference);
+  const freeSessions = sessions.filter((s) => !s.respectsInterference);
 
   const placements = new Map<SessionName, DayOfWeek>();
   const usedDays = new Set<DayOfWeek>();
-  const eligibleForLower = sortedDays.filter((d) => !isBlockedForLower(d, interferenceDays));
-  const lowerDayIndices: number[] = [];
+  const eligibleForInterference = sortedDays.filter((d) => !isBlockedByInterference(d, interferenceDays));
+  const groupDayIndices = new Map<string, number[]>();
 
-  for (const session of lowerSessions) {
-    const wellSpaced = eligibleForLower.find((d) => {
+  for (const session of constrainedSessions) {
+    const group = session.spacingGroup;
+    const groupIndices = group ? (groupDayIndices.get(group) ?? []) : [];
+
+    const wellSpaced = eligibleForInterference.find((d) => {
       if (usedDays.has(d)) return false;
       const dIndex = WEEK_DAY_ORDER.indexOf(d);
-      return lowerDayIndices.every((i) => Math.abs(dIndex - i) >= minDaysBetweenLowerSessions);
+      return groupIndices.every((i) => Math.abs(dIndex - i) >= minDaysBetweenGroupedSessions);
     });
     // Fall back to any unused eligible (interference-respecting) day if
     // ideal spacing can't be met, and as a last resort to any available day
     // at all if EVERY available day happens to sit right before a run —
     // that does happen (a tight run week can leave no day that isn't the
     // day before something). Dropping the session outright would silently
-    // skip lower-body work for as long as that run pattern holds — the
-    // source program's own peak-week rule keeps Lower A in the reduced
-    // set, so this should degrade the interference rule before it drops
-    // a session the doc explicitly says should still happen.
+    // skip work for as long as that run pattern holds — the source
+    // program's own peak-week rule keeps Lower A in the reduced set, so
+    // this should degrade the interference rule before it drops a session
+    // the doc explicitly says should still happen.
     const candidate =
       wellSpaced ??
-      eligibleForLower.find((d) => !usedDays.has(d)) ??
+      eligibleForInterference.find((d) => !usedDays.has(d)) ??
       sortedDays.find((d) => !usedDays.has(d));
 
     if (candidate) {
       placements.set(session.name, candidate);
       usedDays.add(candidate);
-      lowerDayIndices.push(WEEK_DAY_ORDER.indexOf(candidate));
+      if (group) {
+        groupDayIndices.set(group, [...groupIndices, WEEK_DAY_ORDER.indexOf(candidate)]);
+      }
     }
   }
 
-  for (const session of upperSessions) {
+  for (const session of freeSessions) {
     const candidate = sortedDays.find((d) => !usedDays.has(d));
     if (candidate) {
       placements.set(session.name, candidate);
@@ -134,7 +139,7 @@ export function scheduleStrengthSessions(
       sessions,
       week.availableDays,
       week.interferenceDays,
-      program.minDaysBetweenLowerSessions,
+      program.minDaysBetweenGroupedSessions,
     );
 
     for (const session of sessions) {
