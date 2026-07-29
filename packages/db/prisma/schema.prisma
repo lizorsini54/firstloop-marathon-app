@@ -79,6 +79,9 @@ model SessionLog {
   durationMin      Int
   rpe              Int
   notes            String?
+  // per-exercise sets/reps/weight for structured strength logging — null for
+  // runs/bikes, or a freeform lift log with no linked planned session.
+  setLog           Json?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 

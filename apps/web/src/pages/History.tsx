@@ -55,8 +55,9 @@ export function History() {
               <span className="font-mono">{formatUTCDate(s.date)}</span>
               <span>{titleCase(s.type)}</span>
               <span className="text-right font-mono text-muted-foreground">
-                {s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}
-                {s.durationMin}min · RPE {s.rpe}
+                {s.setLog && s.setLog.length > 0
+                  ? `${s.setLog.length} exercises logged · RPE ${s.rpe}`
+                  : `${s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}${s.durationMin}min · RPE ${s.rpe}`}
               </span>
             </li>
           ))}

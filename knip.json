@@ -10,6 +10,7 @@
     },
     "packages/contracts": {},
     "packages/db": {},
-    "packages/plan-engine": {}
+    "packages/plan-engine": {},
+    "packages/strength-engine": {}
   }
 }

@@ -11,7 +11,6 @@ function makeIntake(overrides: Partial<PlanIntake> = {}): PlanIntake {
     raceDate: new Date("2027-02-27"),
     startDate: new Date("2026-06-01"),
     currentWeeklyMileage: 25,
-    liftDaysPerWeek: 2,
     bikeDaysPerWeek: 1,
     injuryFlags: [],
     ...overrides,
@@ -177,23 +176,21 @@ describe("generatePlan — structural sanity", () => {
     }
   });
 
-  test("bike and lift days never land on the long-run day", () => {
+  test("bike days never land on the long-run day", () => {
     const { workouts } = generatePlan(makeIntake());
     const longRunDay = WEEK_DAY_ORDER[6]; // SUNDAY
 
     for (const w of workouts) {
       if (w.day !== longRunDay) continue;
       expect(w.type).not.toBe("BIKE");
-      expect(w.type).not.toBe("LIFT");
     }
   });
 
-  test("respects the requested lift/bike day counts in an easy (non-quality) week", () => {
-    const intake = makeIntake({ liftDaysPerWeek: 3, bikeDaysPerWeek: 2 });
+  test("respects the requested bike day count in an easy (non-quality) week", () => {
+    const intake = makeIntake({ bikeDaysPerWeek: 2 });
     const { workouts } = generatePlan(intake);
     const week1 = workouts.filter((w) => w.weekNumber === 1);
 
-    expect(week1.filter((w) => w.type === "LIFT")).toHaveLength(3);
     expect(week1.filter((w) => w.type === "BIKE")).toHaveLength(2);
   });
 });

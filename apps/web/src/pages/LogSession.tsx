@@ -1,7 +1,7 @@
 import { logSessionInputSchema } from "@firstloop/contracts/schemas/session";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { orpc } from "../lib/orpc";
 
 type WorkoutType = "RUN" | "LIFT" | "BIKE" | "REST";
-
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
+
+type LinkedExercise = { name: string; setsReps: string; isMainLift?: boolean; notes?: string };
+type LinkedPrescription = { displayName?: string; block?: string; exercises?: LinkedExercise[] };
+type LogSessionNavState = { plannedWorkoutId?: string; prescription?: LinkedPrescription };
+
+type SetEntry = { reps: string; weightLbs: string };
+type ExerciseLog = { exercise: string; sets: SetEntry[] };
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -31,19 +37,69 @@ const WORKOUT_TYPES: { value: WorkoutType; label: string }[] = [
   { value: "REST", label: "Rest" },
 ];
 
+function parseSetCount(setsReps: string): number {
+  const match = /^(\d+)\s*x/.exec(setsReps);
+  const n = match ? Number(match[1]) : 0;
+  return n > 0 ? n : 3;
+}
+
+function initialExerciseLogs(exercises: LinkedExercise[]): ExerciseLog[] {
+  return exercises.map((ex) => ({
+    exercise: ex.name,
+    sets: Array.from({ length: parseSetCount(ex.setsReps) }, () => ({ reps: "", weightLbs: "" })),
+  }));
+}
+
 export function LogSession() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = location.state as LogSessionNavState | null;
+  const linkedExercises = navState?.prescription?.exercises;
+  const isStructuredLift = Boolean(linkedExercises && linkedExercises.length > 0);
+
   const [date, setDate] = useState(today);
-  const [type, setType] = useState<WorkoutType>("RUN");
+  const [type, setType] = useState<WorkoutType>(isStructuredLift ? "LIFT" : "RUN");
   const [distanceMiles, setDistanceMiles] = useState("");
   const [durationMin, setDurationMin] = useState("");
   const [rpe, setRpe] = useState("5");
   const [notes, setNotes] = useState("");
+  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>(
+    linkedExercises ? initialExerciseLogs(linkedExercises) : [],
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ status: "idle" });
 
+  function updateSet(exerciseIndex: number, setIndex: number, field: keyof SetEntry, value: string) {
+    setExerciseLogs((prev) =>
+      prev.map((ex, i) =>
+        i !== exerciseIndex
+          ? ex
+          : { ...ex, sets: ex.sets.map((s, j) => (j === setIndex ? { ...s, [field]: value } : s)) },
+      ),
+    );
+  }
+
+  function addSet(exerciseIndex: number) {
+    setExerciseLogs((prev) =>
+      prev.map((ex, i) =>
+        i !== exerciseIndex ? ex : { ...ex, sets: [...ex.sets, { reps: "", weightLbs: "" }] },
+      ),
+    );
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    const setLog = isStructuredLift
+      ? exerciseLogs
+          .map((ex) => ({
+            exercise: ex.exercise,
+            sets: ex.sets
+              .filter((s) => s.reps.trim() !== "")
+              .map((s) => ({ reps: Number(s.reps), weightLbs: Number(s.weightLbs || "0") })),
+          }))
+          .filter((ex) => ex.sets.length > 0)
+      : undefined;
 
     const result = logSessionInputSchema.safeParse({
       date,
@@ -52,6 +108,8 @@ export function LogSession() {
       durationMin: Number(durationMin),
       rpe: Number(rpe),
       notes: notes.trim() || undefined,
+      plannedWorkoutId: navState?.plannedWorkoutId,
+      setLog: setLog && setLog.length > 0 ? setLog : undefined,
     });
 
     if (!result.success) {
@@ -84,9 +142,13 @@ export function LogSession() {
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-2xl font-bold uppercase tracking-tight">
-            Log a session
+            {isStructuredLift ? (navState?.prescription?.displayName ?? "Log a session") : "Log a session"}
           </CardTitle>
-          <CardDescription>What did you actually do out there?</CardDescription>
+          <CardDescription>
+            {isStructuredLift
+              ? "Log your sets for this session."
+              : "What did you actually do out there?"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -111,42 +173,98 @@ export function LogSession() {
               {fieldErrors.date && <p className="text-sm text-destructive">{fieldErrors.date}</p>}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="type" className={labelClass}>
-                Type
-              </Label>
-              <Select value={type} onValueChange={(v) => setType(v as WorkoutType)}>
-                <SelectTrigger id="type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WORKOUT_TYPES.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isStructuredLift && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="type" className={labelClass}>
+                    Type
+                  </Label>
+                  <Select value={type} onValueChange={(v) => setType(v as WorkoutType)}>
+                    <SelectTrigger id="type" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WORKOUT_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="distanceMiles" className={labelClass}>
-                Distance (miles, optional)
-              </Label>
-              <Input
-                id="distanceMiles"
-                type="number"
-                min={0}
-                step="0.1"
-                value={distanceMiles}
-                onChange={(e) => setDistanceMiles(e.target.value)}
-                aria-invalid={Boolean(fieldErrors.distanceMiles)}
-                className="font-mono"
-              />
-              {fieldErrors.distanceMiles && (
-                <p className="text-sm text-destructive">{fieldErrors.distanceMiles}</p>
-              )}
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="distanceMiles" className={labelClass}>
+                    Distance (miles, optional)
+                  </Label>
+                  <Input
+                    id="distanceMiles"
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={distanceMiles}
+                    onChange={(e) => setDistanceMiles(e.target.value)}
+                    aria-invalid={Boolean(fieldErrors.distanceMiles)}
+                    className="font-mono"
+                  />
+                  {fieldErrors.distanceMiles && (
+                    <p className="text-sm text-destructive">{fieldErrors.distanceMiles}</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {isStructuredLift && (
+              <div className="flex flex-col gap-3">
+                {exerciseLogs.map((ex, i) => {
+                  const template = linkedExercises?.[i];
+                  return (
+                    <div key={ex.exercise} className="rounded-md border border-border p-3">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium">{ex.exercise}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{template?.setsReps}</p>
+                      </div>
+                      {template?.notes && (
+                        <p className="mt-1 text-xs text-muted-foreground">{template.notes}</p>
+                      )}
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        {ex.sets.map((s, j) => (
+                          <div key={j} className="flex items-center gap-2">
+                            <span className={`w-12 shrink-0 ${labelClass}`}>Set {j + 1}</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="Reps"
+                              value={s.reps}
+                              onChange={(e) => updateSet(i, j, "reps", e.target.value)}
+                              className="font-mono"
+                            />
+                            <Input
+                              type="number"
+                              min={0}
+                              step="2.5"
+                              placeholder="Lbs"
+                              value={s.weightLbs}
+                              onChange={(e) => updateSet(i, j, "weightLbs", e.target.value)}
+                              className="font-mono"
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="self-start"
+                          onClick={() => addSet(i)}
+                        >
+                          + Add set
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="durationMin" className={labelClass}>

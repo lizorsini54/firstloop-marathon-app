@@ -1,6 +1,6 @@
 import type { DashboardOutput } from "@firstloop/contracts";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MileageChart } from "../components/MileageChart";
 import { PhaseArc } from "../components/PhaseArc";
 import { formatUTCDate } from "../lib/date";
@@ -24,6 +24,10 @@ const labelClass = "text-[0.7rem] font-semibold uppercase tracking-[0.08em] text
 function describePrescription(
   p: DashboardOutput["plannedWorkouts"][number]["prescription"],
 ): string {
+  if (p.exercises) {
+    const parts = [p.displayName, p.block ? `${p.block} block` : undefined, `${p.exercises.length} exercises`];
+    return parts.filter(Boolean).join(" · ");
+  }
   const parts: string[] = [];
   if (p.distanceMiles) parts.push(`${p.distanceMiles}mi`);
   if (p.durationMin) parts.push(`${p.durationMin}min`);
@@ -33,6 +37,7 @@ function describePrescription(
 }
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
@@ -104,12 +109,30 @@ export function Dashboard() {
         <h2 className={labelClass}>This week's plan</h2>
         <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
           {plannedWorkouts.map((w) => (
-            <li key={w.id} className="grid grid-cols-[6rem_4rem_1fr] items-center gap-2 px-4 py-2.5 text-sm">
+            <li
+              key={w.id}
+              className="grid grid-cols-[6rem_4rem_1fr_auto] items-center gap-2 px-4 py-2.5 text-sm"
+            >
               <span>{titleCase(w.day)}</span>
               <span>{titleCase(w.type)}</span>
               <span className="text-right font-mono text-muted-foreground">
                 {describePrescription(w.prescription)}
               </span>
+              {w.type === "LIFT" && w.prescription.exercises ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate("/log", {
+                      state: { plannedWorkoutId: w.id, prescription: w.prescription },
+                    });
+                  }}
+                  className="rounded-sm text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  Log this
+                </button>
+              ) : (
+                <span />
+              )}
             </li>
           ))}
         </ul>
@@ -134,8 +157,9 @@ export function Dashboard() {
                 <span className="font-mono">{formatUTCDate(s.date)}</span>
                 <span>{titleCase(s.type)}</span>
                 <span className="text-right font-mono text-muted-foreground">
-                  {s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}
-                  {s.durationMin}min · RPE {s.rpe}
+                  {s.setLog && s.setLog.length > 0
+                    ? `${s.setLog.length} exercises logged · RPE ${s.rpe}`
+                    : `${s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}${s.durationMin}min · RPE ${s.rpe}`}
                 </span>
               </li>
             ))}

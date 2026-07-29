@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@firstloop/plan-engine": "workspace:*",
+    "@firstloop/strength-engine": "workspace:*",
     "@prisma/client": "^6.3.1"
   },
   "devDependencies": {
