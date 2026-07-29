@@ -1,9 +1,24 @@
+import { createPlanInputSchema } from "@firstloop/contracts/schemas/plan";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { orpc } from "../lib/orpc";
 
 const INJURY_OPTIONS = ["Knee", "IT band", "Shin splints"];
+const DAY_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7];
 
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
 
@@ -15,34 +30,50 @@ export function Intake() {
   const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("0");
   const [checkedInjuries, setCheckedInjuries] = useState<string[]>([]);
   const [otherInjury, setOtherInjury] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ status: "idle" });
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  function toggleInjury(option: string) {
+  function toggleInjury(option: string, checked: boolean) {
     setCheckedInjuries((prev) =>
-      prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option],
+      checked ? [...prev, option] : prev.filter((o) => o !== option),
     );
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setState({ status: "submitting" });
     setWarnings([]);
 
     const injuryFlags = [...checkedInjuries];
     if (otherInjury.trim()) injuryFlags.push(otherInjury.trim());
 
+    const result = createPlanInputSchema.safeParse({
+      raceDate,
+      currentWeeklyMileage: Number(currentWeeklyMileage),
+      liftDaysPerWeek: Number(liftDaysPerWeek),
+      bikeDaysPerWeek: Number(bikeDaysPerWeek),
+      injuryFlags,
+    });
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0];
+        if (typeof field === "string" && !(field in errors)) {
+          errors[field] = issue.message;
+        }
+      }
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
+    setState({ status: "submitting" });
     try {
-      const result = await orpc.createPlan({
-        raceDate: new Date(raceDate),
-        currentWeeklyMileage: Number(currentWeeklyMileage),
-        liftDaysPerWeek: Number(liftDaysPerWeek),
-        bikeDaysPerWeek: Number(bikeDaysPerWeek),
-        injuryFlags,
-      });
+      const created = await orpc.createPlan(result.data);
       setState({ status: "idle" });
-      if (result.warnings.length > 0) {
-        setWarnings(result.warnings);
+      if (created.warnings.length > 0) {
+        setWarnings(created.warnings);
       } else {
         void navigate("/dashboard");
       }
@@ -56,113 +87,133 @@ export function Intake() {
 
   return (
     <div className="mx-auto max-w-lg p-6">
-      <h1 className="text-xl font-semibold">Set your goal</h1>
-      <form
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-        className="mt-6 flex flex-col gap-4"
-      >
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Race date</span>
-          <input
-            type="date"
-            required
-            value={raceDate}
-            onChange={(e) => setRaceDate(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Current weekly mileage</span>
-          <input
-            type="number"
-            required
-            min={0}
-            step="0.1"
-            value={currentWeeklyMileage}
-            onChange={(e) => setCurrentWeeklyMileage(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Lift days per week</span>
-          <input
-            type="number"
-            required
-            min={0}
-            max={7}
-            value={liftDaysPerWeek}
-            onChange={(e) => setLiftDaysPerWeek(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Bike days per week</span>
-          <input
-            type="number"
-            required
-            min={0}
-            max={7}
-            value={bikeDaysPerWeek}
-            onChange={(e) => setBikeDaysPerWeek(e.target.value)}
-            className="rounded-md border border-border px-3 py-2"
-          />
-        </label>
-
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">Injury flags</legend>
-          {INJURY_OPTIONS.map((option) => (
-            <label key={option} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={checkedInjuries.includes(option)}
-                onChange={() => toggleInjury(option)}
+      <Card>
+        <CardHeader>
+          <CardTitle>Set your goal</CardTitle>
+          <CardDescription>
+            We'll generate a training plan from your race date and current routine.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+            className="flex flex-col gap-4"
+            noValidate
+          >
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="raceDate">Race date</Label>
+              <Input
+                id="raceDate"
+                type="date"
+                value={raceDate}
+                onChange={(e) => setRaceDate(e.target.value)}
+                aria-invalid={Boolean(fieldErrors.raceDate)}
               />
-              {option}
-            </label>
-          ))}
-          <input
-            type="text"
-            placeholder="Other (optional)"
-            value={otherInjury}
-            onChange={(e) => setOtherInjury(e.target.value)}
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-        </fieldset>
+              {fieldErrors.raceDate && (
+                <p className="text-sm text-destructive">{fieldErrors.raceDate}</p>
+              )}
+            </div>
 
-        {warnings.length > 0 && (
-          <div className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-900">
-            {warnings.map((w) => (
-              <p key={w}>{w}</p>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                void navigate("/dashboard");
-              }}
-              className="mt-2 underline underline-offset-4"
-            >
-              Continue to dashboard
-            </button>
-          </div>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="currentWeeklyMileage">Current weekly mileage</Label>
+              <Input
+                id="currentWeeklyMileage"
+                type="number"
+                min={0}
+                step="0.1"
+                value={currentWeeklyMileage}
+                onChange={(e) => setCurrentWeeklyMileage(e.target.value)}
+                aria-invalid={Boolean(fieldErrors.currentWeeklyMileage)}
+              />
+              {fieldErrors.currentWeeklyMileage && (
+                <p className="text-sm text-destructive">{fieldErrors.currentWeeklyMileage}</p>
+              )}
+            </div>
 
-        {state.status === "error" && (
-          <p className="text-sm text-red-500">Error: {state.error}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="liftDaysPerWeek">Lift days per week</Label>
+              <Select value={liftDaysPerWeek} onValueChange={setLiftDaysPerWeek}>
+                <SelectTrigger id="liftDaysPerWeek" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_COUNT_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <button
-          type="submit"
-          disabled={state.status === "submitting"}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-        >
-          {state.status === "submitting" ? "Generating plan…" : "Generate plan"}
-        </button>
-      </form>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bikeDaysPerWeek">Bike days per week</Label>
+              <Select value={bikeDaysPerWeek} onValueChange={setBikeDaysPerWeek}>
+                <SelectTrigger id="bikeDaysPerWeek" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_COUNT_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Injury flags</Label>
+              {INJURY_OPTIONS.map((option) => (
+                <div key={option} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`injury-${option}`}
+                    checked={checkedInjuries.includes(option)}
+                    onCheckedChange={(checked) => toggleInjury(option, checked === true)}
+                  />
+                  <Label htmlFor={`injury-${option}`} className="font-normal">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+              <Textarea
+                placeholder="Other (optional)"
+                value={otherInjury}
+                onChange={(e) => setOtherInjury(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            {warnings.length > 0 && (
+              <div className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-900">
+                {warnings.map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+                <Button
+                  type="button"
+                  variant="link"
+                  className="mt-2 h-auto p-0"
+                  onClick={() => {
+                    void navigate("/dashboard");
+                  }}
+                >
+                  Continue to dashboard
+                </Button>
+              </div>
+            )}
+
+            {state.status === "error" && (
+              <p className="text-sm text-destructive">Error: {state.error}</p>
+            )}
+
+            <Button type="submit" disabled={state.status === "submitting"}>
+              {state.status === "submitting" ? "Generating plan…" : "Generate plan"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

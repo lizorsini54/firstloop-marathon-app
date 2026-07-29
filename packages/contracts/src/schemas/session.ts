@@ -1,9 +1,9 @@
-import { WorkoutType } from "@firstloop/db";
 import { z } from "zod";
+import { workoutTypeSchema } from "./enums";
 
 export const logSessionInputSchema = z.object({
   date: z.coerce.date(),
-  type: z.nativeEnum(WorkoutType),
+  type: workoutTypeSchema,
   distanceMiles: z.number().positive().optional(),
   durationMin: z.number().int().positive(),
   rpe: z.number().int().min(1).max(10),
