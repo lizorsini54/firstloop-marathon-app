@@ -6,7 +6,7 @@ import {
   phaseForWeek,
   WEEK_DAY_ORDER,
 } from "@firstloop/plan-engine";
-import { gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
+import { checkDayEconomy, gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
 import type { WeekContext } from "@firstloop/strength-engine";
 import type { Prisma, WorkoutType } from "../src/client";
 import { prisma } from "../src/client";
@@ -31,6 +31,19 @@ function randomBetween(min: number, max: number): number {
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+// Duplicated from router.ts's buildInjuryWarning (same reasoning as the
+// weekContexts orchestration above: packages/db can't depend on
+// packages/contracts). Evaluates to null for the demo persona's empty
+// injuryFlags — kept here so the seed stays honest if that ever changes.
+function buildInjuryWarning(injuryFlags: string[], runningWarnings: string[]): string | null {
+  if (injuryFlags.length === 0) return null;
+  const hasKnee = injuryFlags.some((f) => f.toLowerCase() === "knee");
+  const strengthNote = hasKnee
+    ? "Knee-loading strength exercises (back squat, Bulgarian split squat, walking lunge) were substituted or reduced for your flagged knee."
+    : "Strength exercises weren't modified for this — mention any discomfort to a coach.";
+  return [...runningWarnings, strengthNote].join(" ");
 }
 
 function parseSetCount(setsReps: string): number {
@@ -74,11 +87,12 @@ async function main() {
     injuryFlags: [] as string[],
   };
 
-  const { totalWeeks, workouts } = generatePlan(intake);
+  const { totalWeeks, workouts, warnings } = generatePlan(intake);
   const { warning: feasibilityWarning } = checkFeasibility(
     estimateAvailableWeeks(intake.raceDate, intake.startDate),
     intake.runningExperience,
   );
+  const injuryWarning = buildInjuryWarning(intake.injuryFlags, warnings);
 
   // Same orchestration as createPlan in packages/contracts/src/router.ts:
   // REST-day placeholders become the strength scheduler's available slots,
@@ -107,7 +121,8 @@ async function main() {
     });
   }
 
-  const strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+  const strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts, intake.injuryFlags);
+  const { warning: strengthWarning } = checkDayEconomy(gluteGladiator, weekContexts, strengthWorkouts);
   const claimedDays = new Set(strengthWorkouts.map((w) => `${w.weekNumber}-${w.day}`));
   const runningWorkouts = workouts.filter(
     (w) => !(w.type === "REST" && claimedDays.has(`${w.weekNumber}-${w.day}`)),
@@ -126,6 +141,8 @@ async function main() {
         bikeDaysPerWeek: intake.bikeDaysPerWeek,
         injuryFlags: intake.injuryFlags,
         feasibilityWarning,
+        strengthWarning,
+        injuryWarning,
       },
     },
   });

@@ -94,6 +94,16 @@ export function Dashboard() {
             {plan.feasibilityWarning}
           </div>
         )}
+        {plan.strengthWarning && (
+          <div className="mt-4 rounded-md border border-flare/40 bg-flare-bg p-3 text-sm">
+            {plan.strengthWarning}
+          </div>
+        )}
+        {plan.injuryWarning && (
+          <div className="mt-4 rounded-md border border-flare/40 bg-flare-bg p-3 text-sm">
+            {plan.injuryWarning}
+          </div>
+        )}
       </header>
 
       <section className="mt-8">
