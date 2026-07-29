@@ -1,4 +1,6 @@
-import { generatePlan, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
+import { computePhaseBoundaries, generatePlan, phaseForWeek, WEEK_DAY_ORDER } from "@firstloop/plan-engine";
+import { gluteGladiator, scheduleStrengthSessions } from "@firstloop/strength-engine";
+import type { WeekContext } from "@firstloop/strength-engine";
 import type { Prisma, WorkoutType } from "../src/client";
 import { prisma } from "../src/client";
 
@@ -24,6 +26,20 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+function parseSetCount(setsReps: string): number {
+  const match = /^(\d+)\s*x/.exec(setsReps);
+  const n = match ? Number(match[1]) : 0;
+  return n > 0 ? n : 0;
+}
+
+function parseRepsGuess(setsReps: string): number {
+  const match = /x\s*(\d+)(?:-(\d+))?/.exec(setsReps);
+  if (!match) return 10;
+  const low = Number(match[1]);
+  const high = match[2] ? Number(match[2]) : low;
+  return Math.round((low + high) / 2);
+}
+
 async function main() {
   const today = startOfUTCDay(new Date());
   const startDate = startOfUTCDay(new Date(today.getTime() - WEEKS_OF_HISTORY * MS_PER_WEEK));
@@ -41,12 +57,44 @@ async function main() {
     raceDate: RACE_DATE,
     startDate,
     currentWeeklyMileage: 22,
-    liftDaysPerWeek: 2,
     bikeDaysPerWeek: 1,
     injuryFlags: [] as string[],
   };
 
   const { totalWeeks, workouts } = generatePlan(intake);
+
+  // Same orchestration as createPlan in packages/contracts/src/router.ts:
+  // REST-day placeholders become the strength scheduler's available slots,
+  // and any REST row it claims gets dropped before persisting. Duplicated
+  // rather than shared because packages/db can't depend on packages/contracts
+  // (contracts already depends on db — that would be circular).
+  const boundaries = computePhaseBoundaries(totalWeeks);
+  const weekContexts: WeekContext[] = [];
+  for (let week = 1; week <= totalWeeks; week++) {
+    const weekWorkouts = workouts.filter((w) => w.weekNumber === week);
+    const phase = phaseForWeek(week, boundaries);
+    weekContexts.push({
+      weekNumber: week,
+      availableDays: weekWorkouts.filter((w) => w.type === "REST").map((w) => w.day),
+      interferenceDays: weekWorkouts
+        .filter(
+          (w) =>
+            w.type === "RUN" &&
+            (w.prescription.quality === "long" ||
+              w.prescription.quality === "tempo" ||
+              w.prescription.quality === "intervals"),
+        )
+        .map((w) => w.day),
+      isPeakMileageWeek: phase === "peak",
+      isDownDeloadWeek: phase === "taper",
+    });
+  }
+
+  const strengthWorkouts = scheduleStrengthSessions(gluteGladiator, weekContexts);
+  const claimedDays = new Set(strengthWorkouts.map((w) => `${w.weekNumber}-${w.day}`));
+  const runningWorkouts = workouts.filter(
+    (w) => !(w.type === "REST" && claimedDays.has(`${w.weekNumber}-${w.day}`)),
+  );
 
   const plan = await prisma.trainingPlan.create({
     data: {
@@ -55,15 +103,14 @@ async function main() {
       startDate: intake.startDate,
       config: {
         currentWeeklyMileage: intake.currentWeeklyMileage,
-        liftDaysPerWeek: intake.liftDaysPerWeek,
         bikeDaysPerWeek: intake.bikeDaysPerWeek,
         injuryFlags: intake.injuryFlags,
       },
     },
   });
 
-  const createdWorkouts = await Promise.all(
-    workouts.map((w) =>
+  const createdWorkouts = await Promise.all([
+    ...runningWorkouts.map((w) =>
       prisma.plannedWorkout.create({
         data: {
           planId: plan.id,
@@ -74,7 +121,18 @@ async function main() {
         },
       }),
     ),
-  );
+    ...strengthWorkouts.map((w) =>
+      prisma.plannedWorkout.create({
+        data: {
+          planId: plan.id,
+          weekNumber: w.weekNumber,
+          day: w.day,
+          type: "LIFT",
+          prescription: w.prescription as unknown as Prisma.InputJsonValue,
+        },
+      }),
+    ),
+  ]);
 
   let loggedCount = 0;
   for (const workout of createdWorkouts) {
@@ -88,13 +146,15 @@ async function main() {
     if (workoutDate > today) continue; // hasn't happened yet
     if (Math.random() < SKIP_PROBABILITY) continue; // the occasional missed session
 
-    const prescription = workout.prescription as {
-      distanceMiles?: number;
-      durationMin?: number;
-      quality?: string;
-    };
-
-    const { distanceMiles, durationMin, rpe } = simulateActuals(workout.type, prescription);
+    const { distanceMiles, durationMin, rpe, setLog } = simulateActuals(
+      workout.type,
+      workout.prescription as {
+        distanceMiles?: number;
+        durationMin?: number;
+        quality?: string;
+        exercises?: { name: string; setsReps: string; isMainLift?: boolean }[];
+      },
+    );
 
     await prisma.sessionLog.create({
       data: {
@@ -105,6 +165,7 @@ async function main() {
         distanceMiles,
         durationMin,
         rpe,
+        setLog: setLog as Prisma.InputJsonValue | undefined,
       },
     });
     loggedCount++;
@@ -117,8 +178,13 @@ async function main() {
 
 function simulateActuals(
   type: WorkoutType,
-  prescription: { distanceMiles?: number; durationMin?: number; quality?: string },
-): { distanceMiles?: number; durationMin: number; rpe: number } {
+  prescription: {
+    distanceMiles?: number;
+    durationMin?: number;
+    quality?: string;
+    exercises?: { name: string; setsReps: string; isMainLift?: boolean }[];
+  },
+): { distanceMiles?: number; durationMin: number; rpe: number; setLog?: unknown } {
   if (type === "RUN") {
     const isHardEffort =
       prescription.quality === "long" ||
@@ -137,7 +203,27 @@ function simulateActuals(
   }
 
   if (type === "LIFT") {
-    return { durationMin: Math.round(randomBetween(40, 60)), rpe: Math.round(randomBetween(6, 7)) };
+    const exercises = (prescription.exercises ?? []).filter(
+      (ex) => parseSetCount(ex.setsReps) > 0,
+    );
+    const setLog = exercises.map((ex) => {
+      const setCount = parseSetCount(ex.setsReps);
+      const repsGuess = parseRepsGuess(ex.setsReps);
+      const baseWeight = ex.isMainLift ? randomBetween(95, 225) : randomBetween(10, 60);
+      return {
+        exercise: ex.name,
+        sets: Array.from({ length: setCount }, () => ({
+          reps: Math.max(1, Math.round(repsGuess * randomBetween(0.9, 1.1))),
+          weightLbs: Math.round(baseWeight / 2.5) * 2.5,
+        })),
+      };
+    });
+
+    return {
+      durationMin: Math.round(randomBetween(40, 60)),
+      rpe: Math.round(randomBetween(6, 7)),
+      setLog: setLog.length > 0 ? setLog : undefined,
+    };
   }
 
   // BIKE
