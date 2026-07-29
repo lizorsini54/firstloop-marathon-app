@@ -1,6 +1,7 @@
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { orpc } from "../lib/orpc";
 
 type PingState =
@@ -26,32 +27,38 @@ export function Home() {
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <div className="rounded-lg border border-border bg-muted px-8 py-6 text-center">
-        <h1 className="text-xl font-semibold">Cadenza</h1>
-        {ping.status === "loading" && (
-          <p className="mt-2 text-muted-foreground">Pinging server…</p>
-        )}
-        {ping.status === "error" && (
-          <p className="mt-2 text-red-500">Error: {ping.error}</p>
-        )}
-        {ping.status === "success" && (
-          <p className="mt-2 text-muted-foreground">
-            {ping.message} · {ping.receivedAt}
-          </p>
-        )}
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-6">
+      <div className="text-center">
+        <h1 className="font-display text-5xl font-bold tracking-tight text-foreground">
+          CADENZA
+        </h1>
+        <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          Training, by the numbers
+        </p>
       </div>
 
       <div className="flex items-center gap-3">
         <SignedOut>
-          <SignInButton mode="modal" />
+          <SignInButton mode="modal">
+            <Button>Sign in</Button>
+          </SignInButton>
         </SignedOut>
         <SignedIn>
-          <Link to="/dashboard" className="text-sm underline underline-offset-4">
-            Go to dashboard
-          </Link>
+          <Button asChild>
+            <Link to="/dashboard">Go to dashboard</Link>
+          </Button>
           <UserButton />
         </SignedIn>
+      </div>
+
+      <div className="rounded-md border border-border bg-card px-6 py-4 text-center text-sm">
+        {ping.status === "loading" && <p className="text-muted-foreground">Pinging server…</p>}
+        {ping.status === "error" && <p className="text-destructive">Error: {ping.error}</p>}
+        {ping.status === "success" && (
+          <p className="font-mono text-muted-foreground">
+            {ping.message} · {ping.receivedAt}
+          </p>
+        )}
       </div>
     </main>
   );

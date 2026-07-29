@@ -10,5 +10,8 @@
     }
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/contracts" }]
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/plan-engine" }
+  ]
 }

@@ -39,6 +39,7 @@
       "dependencies": {
         "@clerk/clerk-react": "^5.25.0",
         "@firstloop/contracts": "workspace:*",
+        "@firstloop/plan-engine": "workspace:*",
         "@orpc/client": "^1.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

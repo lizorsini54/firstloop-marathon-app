@@ -89,9 +89,11 @@ export function Intake() {
     <div className="mx-auto max-w-lg p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Set your goal</CardTitle>
+          <CardTitle className="font-display text-2xl font-bold uppercase tracking-tight">
+            Set your goal
+          </CardTitle>
           <CardDescription>
-            We'll generate a training plan from your race date and current routine.
+            We'll build the weeks back from your race day and current routine.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,13 +105,16 @@ export function Intake() {
             noValidate
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="raceDate">Race date</Label>
+              <Label htmlFor="raceDate" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Race date
+              </Label>
               <Input
                 id="raceDate"
                 type="date"
                 value={raceDate}
                 onChange={(e) => setRaceDate(e.target.value)}
                 aria-invalid={Boolean(fieldErrors.raceDate)}
+                className="font-mono"
               />
               {fieldErrors.raceDate && (
                 <p className="text-sm text-destructive">{fieldErrors.raceDate}</p>
@@ -117,7 +122,9 @@ export function Intake() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="currentWeeklyMileage">Current weekly mileage</Label>
+              <Label htmlFor="currentWeeklyMileage" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Current weekly mileage
+              </Label>
               <Input
                 id="currentWeeklyMileage"
                 type="number"
@@ -126,6 +133,7 @@ export function Intake() {
                 value={currentWeeklyMileage}
                 onChange={(e) => setCurrentWeeklyMileage(e.target.value)}
                 aria-invalid={Boolean(fieldErrors.currentWeeklyMileage)}
+                className="font-mono"
               />
               {fieldErrors.currentWeeklyMileage && (
                 <p className="text-sm text-destructive">{fieldErrors.currentWeeklyMileage}</p>
@@ -133,14 +141,16 @@ export function Intake() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="liftDaysPerWeek">Lift days per week</Label>
+              <Label htmlFor="liftDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Lift days per week
+              </Label>
               <Select value={liftDaysPerWeek} onValueChange={setLiftDaysPerWeek}>
-                <SelectTrigger id="liftDaysPerWeek" className="w-full">
+                <SelectTrigger id="liftDaysPerWeek" className="w-full font-mono">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {DAY_COUNT_OPTIONS.map((n) => (
-                    <SelectItem key={n} value={String(n)}>
+                    <SelectItem key={n} value={String(n)} className="font-mono">
                       {n}
                     </SelectItem>
                   ))}
@@ -149,14 +159,16 @@ export function Intake() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bikeDaysPerWeek">Bike days per week</Label>
+              <Label htmlFor="bikeDaysPerWeek" className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Bike days per week
+              </Label>
               <Select value={bikeDaysPerWeek} onValueChange={setBikeDaysPerWeek}>
-                <SelectTrigger id="bikeDaysPerWeek" className="w-full">
+                <SelectTrigger id="bikeDaysPerWeek" className="w-full font-mono">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {DAY_COUNT_OPTIONS.map((n) => (
-                    <SelectItem key={n} value={String(n)}>
+                    <SelectItem key={n} value={String(n)} className="font-mono">
                       {n}
                     </SelectItem>
                   ))}
@@ -165,7 +177,9 @@ export function Intake() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>Injury flags</Label>
+              <Label className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Injury flags
+              </Label>
               {INJURY_OPTIONS.map((option) => (
                 <div key={option} className="flex items-center gap-2">
                   <Checkbox
@@ -187,7 +201,7 @@ export function Intake() {
             </div>
 
             {warnings.length > 0 && (
-              <div className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-900">
+              <div className="rounded-md border border-flare/40 bg-flare-bg p-3 text-sm">
                 {warnings.map((w) => (
                   <p key={w}>{w}</p>
                 ))}
