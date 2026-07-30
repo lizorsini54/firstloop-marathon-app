@@ -172,16 +172,35 @@ async function main() {
     ),
   ]);
 
+  const workoutDateOf = (workout: {
+    weekNumber: number;
+    day: (typeof WEEK_DAY_ORDER)[number];
+  }): Date => {
+    const weekStart = new Date(startDate.getTime() + (workout.weekNumber - 1) * MS_PER_WEEK);
+    return new Date(weekStart.getTime() + WEEK_DAY_ORDER.indexOf(workout.day) * MS_PER_DAY);
+  };
+
+  // The AI Coach needs something real to comment on (Checkpoint 14). Leave the
+  // most recent long run deliberately unlogged rather than hoping
+  // SKIP_PROBABILITY happens to produce an interesting case — a demo where the
+  // coach has nothing to flag undersells the feature.
+  const skippedLongRun = createdWorkouts
+    .filter(
+      (w) =>
+        w.type === "RUN" &&
+        (w.prescription as { quality?: string }).quality === "long" &&
+        workoutDateOf(w) <= today,
+    )
+    .sort((a, b) => workoutDateOf(b).getTime() - workoutDateOf(a).getTime())[0];
+
   let loggedCount = 0;
   for (const workout of createdWorkouts) {
     if (workout.type === "REST") continue;
 
-    const weekStart = new Date(startDate.getTime() + (workout.weekNumber - 1) * MS_PER_WEEK);
-    const workoutDate = new Date(
-      weekStart.getTime() + WEEK_DAY_ORDER.indexOf(workout.day) * MS_PER_DAY,
-    );
+    const workoutDate = workoutDateOf(workout);
 
     if (workoutDate > today) continue; // hasn't happened yet
+    if (workout.id === skippedLongRun?.id) continue; // the deliberate miss, above
     if (Math.random() < SKIP_PROBABILITY) continue; // the occasional missed session
 
     const { distanceMiles, durationMin, rpe, setLog } = simulateActuals(
@@ -212,6 +231,11 @@ async function main() {
   console.log(
     `Seeded plan ${plan.id} (${totalWeeks} weeks, ${createdWorkouts.length} planned workouts) with ${loggedCount} logged sessions for ${SEED_EMAIL}`,
   );
+  if (skippedLongRun) {
+    console.log(
+      `  Left the ${workoutDateOf(skippedLongRun).toISOString().slice(0, 10)} long run unlogged so the coach has a concern to flag.`,
+    );
+  }
 }
 
 function simulateActuals(

@@ -1,6 +1,7 @@
 import type { DashboardOutput } from "@firstloop/contracts";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { CoachCard } from "../components/CoachCard";
 import { MileageChart } from "../components/MileageChart";
 import { PhaseArc } from "../components/PhaseArc";
 import { formatUTCDate } from "../lib/date";
@@ -175,6 +176,8 @@ export function Dashboard() {
           </ul>
         )}
       </section>
+
+      <CoachCard />
 
       <section className="mt-8">
         <h2 className={labelClass}>Weekly mileage</h2>

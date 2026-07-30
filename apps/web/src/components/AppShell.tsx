@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/log", label: "Log" },
   { to: "/history", label: "History" },
   { to: "/progress", label: "Progress" },
+  { to: "/nutrition", label: "Fueling" },
   { to: "/intake", label: "Goal" },
 ];
 

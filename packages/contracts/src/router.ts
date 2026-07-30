@@ -17,8 +17,16 @@ import {
 } from "@firstloop/strength-engine";
 import type { GeneratedStrengthWorkout, StrengthProgram, WeekContext } from "@firstloop/strength-engine";
 import { z } from "zod";
+import {
+  buildTrainingSnapshot,
+  createAnthropicCompletion,
+  getCoachFeedback as requestCoachFeedback,
+} from "./lib/coach";
+import type { LoggedItem, PlannedItem } from "./lib/coach";
 import { getOrCreateUser } from "./lib/getOrCreateUser";
 import { protectedProcedure, publicProcedure } from "./procedures";
+import { getCoachFeedbackOutputSchema } from "./schemas/coach";
+import type { GetCoachFeedbackOutput } from "./schemas/coach";
 import { dashboardOutputSchema } from "./schemas/dashboard";
 import type { DashboardOutput } from "./schemas/dashboard";
 import { getSessionHistoryOutputSchema } from "./schemas/history";
@@ -30,7 +38,8 @@ import { getRunningProgressOutputSchema } from "./schemas/progress";
 import { logSessionInputSchema, logSessionOutputSchema } from "./schemas/session";
 import type { SetLogEntry } from "./schemas/session";
 
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MS_PER_WEEK = 7 * MS_PER_DAY;
 
 /**
  * Midnight UTC of the given date. Plan start dates need to align with
@@ -463,6 +472,88 @@ const getPlanOverview = protectedProcedure
     };
   });
 
+/** How far back the coach's mileage-trend context reaches (see lib/coach.ts). */
+const COACH_LOOKBACK_DAYS = 28;
+
+const unavailableCoachFeedback: GetCoachFeedbackOutput = {
+  status: "unavailable",
+  guidance: null,
+  concern: null,
+};
+
+const getCoachFeedback = protectedProcedure
+  .input(z.void())
+  .output(getCoachFeedbackOutputSchema)
+  .handler(async ({ context }): Promise<GetCoachFeedbackOutput> => {
+    // Checked before any DB work: with no key configured (CI, a fresh
+    // checkout) this endpoint is a no-op rather than an error.
+    const complete = createAnthropicCompletion(process.env.ANTHROPIC_API_KEY);
+    if (!complete) return unavailableCoachFeedback;
+
+    const user = await getOrCreateUser(context.auth.userId);
+    const plan = await prisma.trainingPlan.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!plan) return { status: "no_plan", guidance: null, concern: null };
+
+    const now = new Date();
+    const lookbackStart = new Date(now.getTime() - COACH_LOOKBACK_DAYS * MS_PER_DAY);
+
+    const [meta, allPlannedWorkouts, sessionLogs] = await Promise.all([
+      computePlanMeta(plan),
+      prisma.plannedWorkout.findMany({ where: { planId: plan.id } }),
+      prisma.sessionLog.findMany({
+        where: { userId: user.id, date: { gte: lookbackStart } },
+        orderBy: { date: "asc" },
+      }),
+    ]);
+
+    // Planned workouts carry (weekNumber, day), not a date — the same
+    // reconstruction getDashboard and the seed script both do.
+    const planned: PlannedItem[] = allPlannedWorkouts.map((w) => {
+      const weekStart = new Date(plan.startDate.getTime() + (w.weekNumber - 1) * MS_PER_WEEK);
+      const prescription = w.prescription as WorkoutPrescription;
+      return {
+        id: w.id,
+        date: new Date(weekStart.getTime() + WEEK_DAY_ORDER.indexOf(w.day) * MS_PER_DAY),
+        type: w.type,
+        miles: prescription.distanceMiles ?? null,
+        quality: prescription.quality ?? null,
+      };
+    });
+
+    const logged: LoggedItem[] = sessionLogs.map((s) => ({
+      plannedWorkoutId: s.plannedWorkoutId,
+      date: s.date,
+      type: s.type,
+      miles: s.distanceMiles,
+      durationMin: s.durationMin,
+      rpe: s.rpe,
+    }));
+
+    const snapshot = buildTrainingSnapshot({
+      now,
+      raceDate: plan.raceDate,
+      phase: meta.phase,
+      currentWeek: meta.currentWeek,
+      totalWeeks: meta.totalWeeks,
+      planned,
+      logged,
+    });
+
+    try {
+      const feedback = await requestCoachFeedback(snapshot, complete);
+      return { status: "ok", guidance: feedback.guidance, concern: feedback.concern };
+    } catch (error) {
+      // A coach outage must not take the dashboard down with it — the card
+      // renders its unavailable state and everything else still works.
+      console.error("Coach feedback request failed:", error);
+      return unavailableCoachFeedback;
+    }
+  });
+
 export const router = {
   ping,
   me,
@@ -472,6 +563,7 @@ export const router = {
   getSessionHistory,
   getRunningProgress,
   getPlanOverview,
+  getCoachFeedback,
 };
 
 export type AppRouter = typeof router;

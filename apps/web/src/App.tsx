@@ -9,6 +9,7 @@ import { History } from "./pages/History";
 import { Home } from "./pages/Home";
 import { Intake } from "./pages/Intake";
 import { LogSession } from "./pages/LogSession";
+import { Nutrition } from "./pages/Nutrition";
 import { Plan } from "./pages/Plan";
 import { Progress } from "./pages/Progress";
 
@@ -86,6 +87,14 @@ export function App() {
           element={
             <RequireAuth>
               <Progress />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/nutrition"
+          element={
+            <RequireAuth>
+              <Nutrition />
             </RequireAuth>
           }
         />

@@ -10,6 +10,7 @@
     "./schemas/*": "./src/schemas/*.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@clerk/express": "^1.4.0",
     "@firstloop/db": "workspace:*",
     "@firstloop/plan-engine": "workspace:*",
