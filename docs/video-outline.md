@@ -33,8 +33,8 @@ Do this before the feature demo, while the UI is still new to the viewer, so the
 Sign in → intake → generated plan → log a session → dashboard.
 
 - On **intake**: the feasibility check runs live in the browser, because `plan-engine` is a pure package the web app can import directly. Note out loud that it names a short runway and never blocks plan creation — it's a stated coaching judgment call, not a formula pretending to be science.
-- On **the plan view**: tabs by phase, accordion by week, current week open by default. Scroll far enough to show the strength sessions coordinating with the running days rather than sitting beside them.
-- On **logging**: record a real session and land back on the dashboard with planned vs. logged updated.
+- On **Schedule** (the full plan view): tabs by phase, accordion by week, current week open by default. Scroll far enough to show the strength sessions coordinating with the running days rather than sitting beside them.
+- On **logging**: do this specifically by clicking **"Log this" on a run row** in the dashboard's current week, not via the generic "Log a session" button. Point out that the type and planned duration arrive prefilled, and that distance is deliberately left blank because the plan prescribes that run by duration. Section 6 calls back to this exact click, so it needs to be the one the audience sees.
 - If a key is configured, trigger the **AI Coach** once here and say plainly what it is: a reactive comment on the last two weeks, not the thing making the schedule safe. Its endpoint is allowed to fail; no key is a supported state.
 
 ## 4. The day-economy warning, on purpose — ~1 min
@@ -55,14 +55,26 @@ The strength program is data; the scheduler is generic code reading constraints 
 
 The line to land: the architecture held up under reuse nobody planned for, which is a better test than it holding up in the description of it.
 
-## 6. Bugs found by using the system — ~1 min
+## 6. Bugs found by using the system — ~1.5 min
 
-Two, told quickly:
+Lead with the logging one. It's the strongest of the three, and it pays off something the audience watched you do in section 3.
 
-- **The six-week silent drop.** Every unit test passed. Only reading a full 39-week generated plan showed that one strength session had been quietly disappearing for weeks 31–36, because that plan's specific day layout left it no legal day and the scheduler's fallback dropped it rather than degrade the rule.
-- **450 orphaned session logs.** The AI Coach reported 80-plus-mile weeks on a plan whose longest run is 9.9 miles. Taking that seriously instead of writing it off as a model quirk led to a foreign key set to null rather than cascade on delete — every past reseed had stacked another full history behind the current one.
+**The "log this" action that only worked for lifts.** Call back to logging that run from the dashboard — *that button did not exist for runs until the last checkpoint of this project.* It had been gated to strength sessions since the strength program was added, so every run, including the long run, had no way to be logged against its plan.
 
-The through-line: both came from generating real output and looking at it, not from reading code in the abstract.
+Three beats, in this order, because each one makes the next worse:
+
+1. **Nothing caught it.** The type checker was satisfied. Every test passed. It survived a coach-persona and designer-persona review of the product.
+2. **The decision log confidently recorded the opposite.** An earlier checkpoint justified leaving the full plan view read-only by citing this action's existence on the dashboard — treating the two as a deliberate matched pair. The pair never existed for runs. Worth being blunt here: written documentation asserting something false is *worse* than no documentation, and the log now says so alongside the original decision, which still stands.
+3. **The cost was invisible and downstream.** The AI Coach decides what you missed by checking whether a logged session links back to a planned one. A runner logging every session faithfully through the generic form — the only route they had — would have been told they'd missed all of them. And the seeded demo data sets that link directly when it's generated, which is exactly why eight weeks of it never showed the problem.
+
+The line to land: **it took a person clicking the thing.** No test could have found this, because the fixture that made the tests realistic was also the fixture that hid the bug.
+
+Then the other two quickly, as evidence this wasn't a one-off:
+
+- **The six-week silent drop** — a strength session quietly disappearing from weeks 31–36, visible only by reading a full 39-week plan end to end.
+- **450 orphaned session logs** — the Coach reporting 80-plus-mile weeks on a plan whose longest run is 9.9 miles, traced back to a foreign key set to null rather than cascade.
+
+> **Timing note:** with this section at 1.5 minutes the outline totals roughly 8.5 minutes, just over the target. If you need to claw back time, section 3's golden path is the place — the logging demo there now carries part of section 6's weight, so it can move faster without losing anything.
 
 ## 7. Close — ~30s
 
