@@ -73,6 +73,15 @@ async function main() {
   // Clear any previously seeded plans so this script is safe to rerun.
   await prisma.trainingPlan.deleteMany({ where: { userId: user.id } });
 
+  // SessionLog.plannedWorkoutId is onDelete: SetNull, so dropping the plans
+  // above *orphans* their logs rather than removing them. Every past reseed
+  // therefore left a full history behind, and since mileage is queried by user
+  // (not by plan — a runner's history legitimately spans plans), those stacked
+  // up: 450 orphans inflating weekly totals to 80+ miles on a plan whose
+  // longest run is 9.9mi. Flagged in DECISIONS.md at Checkpoint 13, fixed here
+  // once the AI coach started reading those totals back as real training load.
+  await prisma.sessionLog.deleteMany({ where: { userId: user.id } });
+
   const intake = {
     raceDate: RACE_DATE,
     startDate,
