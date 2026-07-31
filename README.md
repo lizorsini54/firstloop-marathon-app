@@ -39,7 +39,7 @@ flowchart LR
         GUARD["protectedProcedure<br/>UNAUTHORIZED if no auth"]
         ZIN["Zod .input()"]
         PROC["handler — router.ts"]
-        ZOUT["Zod .output()"]
+        ZOUT["Zod .output()<br/>typed response back to the client"]
         GUARD --> ZIN --> PROC --> ZOUT
     end
 
@@ -68,7 +68,6 @@ flowchart LR
     PROC --> PRISMA
     PROC --> USERSYNC
     PROC -.->|"optional, allowed to fail"| CLAUDE
-    ZOUT -->|"typed response"| CLIENT
 
     classDef optional stroke-dasharray: 5 5
     class CLAUDE optional
