@@ -29,7 +29,7 @@ function MileageTrendTooltip({
   payload,
 }: {
   active?: boolean;
-  payload?: { value: number; payload: WeekPoint }[];
+  payload?: { value: number | null; payload: WeekPoint }[];
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0];
@@ -37,7 +37,11 @@ function MileageTrendTooltip({
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 text-xs shadow-sm">
       <p className={labelClass}>Week of {shortDate(point.payload.weekStart)}</p>
-      <p className="mt-1 font-mono tabular-nums">{point.value.toFixed(1)}mi</p>
+      {point.value === null ? (
+        <p className="mt-1 text-muted-foreground">Not measured in miles</p>
+      ) : (
+        <p className="mt-1 font-mono tabular-nums">{point.value.toFixed(1)}mi</p>
+      )}
     </div>
   );
 }
@@ -102,6 +106,10 @@ export function Progress() {
         <>
           <section className="mt-8">
             <h2 className={labelClass}>Weekly mileage</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Total distance across every run you logged with one. A gap in the line is a week whose
+              runs were logged by duration only, not a week you didn't run.
+            </p>
             <div className="mt-2 h-56 w-full rounded-md border border-border bg-card p-3">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={state.data.weeks} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>

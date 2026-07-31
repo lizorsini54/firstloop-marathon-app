@@ -90,9 +90,21 @@ async function main() {
     // marathon before and the race date is far out. Create a plan with a
     // near-term race date and "first marathon" to see the warning trigger.
     runningExperience: "has_finished_one" as const,
-    runningDaysPerWeek: 4,
+    // 3 running days + 0 bike days is the *only* configuration that clears
+    // checkDayEconomy while keeping Glute Gladiator, and that isn't a guess:
+    // sweeping running 3-5 x bike 0-2 through generatePlan + checkDayEconomy
+    // (Checkpoint 16) leaves exactly this one clean in program mode. The
+    // program needs 4 free days a week and every running or bike day takes
+    // one, so the old 4-run/1-bike default gave 4 sessions only 2 days to land
+    // on — the warning it produced was accurate, not noise. The demo persona
+    // gives up its bike day to keep the real strength program on screen; the
+    // intake form defaults to 3 run / 1 bike / custom-2 instead, which keeps
+    // all three disciplines and a genuine rest day. The check itself is
+    // untouched — see the tight-day-economy walkthrough in docs/video-outline.md
+    // for a plan built deliberately to trigger it.
+    runningDaysPerWeek: 3,
     strengthMode: "program" as const,
-    bikeDaysPerWeek: 1,
+    bikeDaysPerWeek: 0,
     injuryFlags: [] as string[],
   };
 
@@ -269,8 +281,24 @@ function simulateActuals(
       return { distanceMiles, durationMin, rpe };
     }
 
+    // Everything that isn't a long run is prescribed by duration, not distance
+    // — so without this, the demo's entire mileage history was just its long
+    // runs. Derive the distance the runner *covered* from the duration they
+    // logged and a pace appropriate to the effort.
+    //
+    // This belongs in the log and nowhere else. A logged session is a record of
+    // something that happened, and a real runner finishing a 30-minute easy run
+    // knows roughly how far it was; simulating that is what this whole function
+    // does. Writing a distance back into the *prescription* would be a
+    // different thing entirely — inventing plan content plan-engine never
+    // produced. The plan still prescribes these runs by duration, and the app
+    // still has no honest way to state a planned distance for them.
     const durationMin = Math.round((prescription.durationMin ?? 40) * randomBetween(0.9, 1.1));
-    return { durationMin, rpe };
+    const paceMinPerMile =
+      prescription.quality === "tempo" || prescription.quality === "intervals"
+        ? randomBetween(7.6, 8.6)
+        : randomBetween(9.3, 10.6);
+    return { distanceMiles: round1(durationMin / paceMinPerMile), durationMin, rpe };
   }
 
   if (type === "LIFT") {

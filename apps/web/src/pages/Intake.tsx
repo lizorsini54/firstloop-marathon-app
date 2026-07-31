@@ -44,10 +44,16 @@ export function Intake() {
   const [raceDate, setRaceDate] = useState("");
   const [currentWeeklyMileage, setCurrentWeeklyMileage] = useState("");
   const [runningExperience, setRunningExperience] = useState<RunningExperience>("has_finished_one");
-  const [runningDaysPerWeek, setRunningDaysPerWeek] = useState("4");
-  const [strengthMode, setStrengthMode] = useState<StrengthMode>("program");
+  // These four defaults are chosen together: 3 run / 1 bike / custom-2 is
+  // verified (Checkpoint 16) to schedule every strength session with a real
+  // rest day left over, so a first plan built without touching anything never
+  // opens on a day-economy warning. Changing one in isolation can reintroduce
+  // it — the strength program competes with running and bike days for the same
+  // seven days. See DECISIONS.md, Checkpoint 16.
+  const [runningDaysPerWeek, setRunningDaysPerWeek] = useState("3");
+  const [strengthMode, setStrengthMode] = useState<StrengthMode>("custom");
   const [customLiftDaysPerWeek, setCustomLiftDaysPerWeek] = useState("2");
-  const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("0");
+  const [bikeDaysPerWeek, setBikeDaysPerWeek] = useState("1");
   const [checkedInjuries, setCheckedInjuries] = useState<string[]>([]);
   const [otherInjury, setOtherInjury] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

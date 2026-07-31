@@ -46,10 +46,17 @@ const sessionLogSchema = z.object({
   setLog: z.array(setLogEntrySchema).nullable(),
 });
 
+// Long-run distance only, on both sides. Easy and quality runs are prescribed
+// by duration, so they have no planned distance to compare a logged one
+// against — including logged distance for them here would show every week as a
+// large overshoot against a planned number that never counted those runs.
 const weeklyMileageSchema = z.object({
   weekNumber: z.number().int(),
   plannedMiles: z.number(),
-  actualMiles: z.number(),
+  // Null for weeks that haven't happened yet, so the rest of the plan doesn't
+  // render as a run of zeroes that reads like missed training. A past week
+  // with no logged long run is a real 0 — that's the adherence signal.
+  actualMiles: z.number().nullable(),
 });
 
 // Shared plan-meta shape — same fields getDashboard and getPlanOverview
@@ -70,7 +77,11 @@ export const dashboardOutputSchema = z.object({
   plan: planMetaSchema.nullable(),
   plannedWorkouts: z.array(plannedWorkoutSchema),
   sessionLogs: z.array(sessionLogSchema),
-  weeklyMileageTotal: z.number(),
+  // Null when sessions were logged this week but none of them recorded a
+  // distance — distinct from 0, which means nothing was logged at all. Distance
+  // is optional on the log form and most runs are prescribed by duration, so
+  // "not measured in miles" is a normal state, not a missing value.
+  weeklyMileageTotal: z.number().nullable(),
   weeklyMileageHistory: z.array(weeklyMileageSchema),
 });
 

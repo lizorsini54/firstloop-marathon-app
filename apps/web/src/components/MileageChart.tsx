@@ -20,12 +20,13 @@ function ChartTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: { value: number; dataKey: string }[];
+  payload?: { value: number | null; dataKey: string }[];
   label?: number;
 }) {
   if (!active || !payload?.length) return null;
   const planned = payload.find((p) => p.dataKey === "plannedMiles")?.value ?? 0;
-  const actual = payload.find((p) => p.dataKey === "actualMiles")?.value ?? 0;
+  const actualEntry = payload.find((p) => p.dataKey === "actualMiles");
+  const actual = actualEntry?.value ?? null;
 
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 text-xs shadow-sm">
@@ -33,10 +34,16 @@ function ChartTooltip({
         Week {label}
       </p>
       <p className="mt-1 font-mono">
-        Planned <span className="tabular-nums">{planned.toFixed(1)}mi</span>
+        Long run planned <span className="tabular-nums">{planned.toFixed(1)}mi</span>
       </p>
       <p className="font-mono">
-        Actual <span className="tabular-nums">{actual.toFixed(1)}mi</span>
+        {actual === null ? (
+          <span className="text-muted-foreground">Not run yet</span>
+        ) : (
+          <>
+            Long run logged <span className="tabular-nums">{actual.toFixed(1)}mi</span>
+          </>
+        )}
       </p>
     </div>
   );
