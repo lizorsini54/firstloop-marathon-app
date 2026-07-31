@@ -153,11 +153,16 @@ export function Dashboard() {
           <h2 className={labelClass}>Logged this week</h2>
           <div className="flex items-baseline gap-1.5">
             <span className="font-mono text-3xl font-semibold tabular-nums text-foreground">
-              {weeklyMileageTotal.toFixed(1)}
+              {weeklyMileageTotal === null ? "—" : weeklyMileageTotal.toFixed(1)}
             </span>
             <span className={labelClass}>mi</span>
           </div>
         </div>
+        {weeklyMileageTotal === null && sessionLogs.length > 0 && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Not measured in miles — none of this week's sessions recorded a distance.
+          </p>
+        )}
         {sessionLogs.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Nothing logged yet — the week's still open.</p>
         ) : (
@@ -180,7 +185,11 @@ export function Dashboard() {
       <CoachCard />
 
       <section className="mt-8">
-        <h2 className={labelClass}>Weekly mileage</h2>
+        <h2 className={labelClass}>Long-run distance — planned vs. logged</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Long runs are the only sessions prescribed by distance; easy and quality runs are
+          prescribed by duration, so they aren't counted on either side of this comparison.
+        </p>
         <div className="mt-2 rounded-md border border-border bg-card p-3">
           <MileageChart data={state.data.weeklyMileageHistory} />
         </div>

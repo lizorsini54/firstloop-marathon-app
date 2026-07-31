@@ -2,7 +2,7 @@
 
 Target length **5–8 minutes**. Structure follows [WRITEUP.md](./WRITEUP.md), so anything said here can be checked against that document and against [DECISIONS.md](../DECISIONS.md).
 
-> **Record after Checkpoint 16 lands.** Sections 3 and 4 both depend on it: CP16 changes the intake and seed defaults so a fresh plan no longer trips the day-economy warning, which is exactly what makes section 4's deliberate demonstration land as a feature rather than as the app's ambient state.
+> **Ready to record.** Checkpoint 16 has landed: the seeded demo runs 3 running days / 0 bike / Glute Gladiator, the intake form defaults to 3 running days / 1 bike / custom-2, and both are verified to produce no day-economy warning. Section 4 now needs a plan built deliberately to trip it — the config is given there.
 
 ---
 
@@ -39,13 +39,13 @@ Sign in → intake → generated plan → log a session → dashboard.
 
 ## 4. The day-economy warning, on purpose — ~1 min
 
-Build a plan with a deliberately tight day economy — enough running and bike days that the strength program cannot fit what it promises — and let the warning fire on camera.
+Build a plan with a deliberately tight day economy and let the warning fire on camera. **Use 4 running days / 1 bike day / "Follow a program"** — verified to produce both halves of the warning: 39 of 39 weeks understaffed, and Lower A / Lower B landing back-to-back in 33 of 39. That was the app's own default until this checkpoint, which is worth saying out loud.
 
 Two things to say while it's on screen:
 1. It reports proportionally and honestly ("N of 39 weeks"), with no minimum threshold before it speaks up. A single bad week still gets named.
 2. It exists because the alternative was what the code used to do: silently drop a session. This is the fix for a real bug, not a decorative banner.
 
-Then say explicitly that the app's *default* inputs were changed so a fresh plan doesn't trip it — a correct warning still shouldn't be the first thing a new user meets — and that the check itself was never touched or suppressed.
+Then say explicitly that the app's *default* inputs were changed so a fresh plan doesn't trip it — a correct warning still shouldn't be the first thing a new user meets — and that the check itself was never thresholded or suppressed. The good version of this story is that the check overruled the plan: the intention was to nudge the day counts, and sweeping the configuration space through the check showed only one configuration keeps the full program at all, which is why the seeded demo and the intake defaults now differ.
 
 ## 5. One architecture story, told properly — ~1.5 min
 
@@ -66,6 +66,6 @@ The through-line: both came from generating real output and looking at it, not f
 
 ## 7. Close — ~30s
 
-Name what isn't there, without hedging: no cutback weeks in base and build, a fixed peak long-run distance, strength progression that steps at block boundaries rather than week to week, scheduler interference rules that are correct but invisible in the UI, and a weekly mileage number that only reflects long-run distance because most runs are prescribed by duration.
+Name what isn't there, without hedging: no cutback weeks in base and build, a fixed peak long-run distance, strength progression that steps at block boundaries rather than week to week, scheduler interference rules that are correct but invisible in the UI, and no planned distance for the runs prescribed by duration — the app now says so plainly wherever that number appears, which is not the same as having solved it.
 
 End on why that list exists at all: every one of those was found, written down, and left visible rather than discovered by whoever used the app next.

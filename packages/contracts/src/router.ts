@@ -308,14 +308,28 @@ const getRunningProgress = protectedProcedure
 
     const buckets = new Map<
       string,
-      { weekStart: Date; totalMiles: number; pacedDurationMin: number; pacedMiles: number }
+      {
+        weekStart: Date;
+        totalMiles: number;
+        /** Runs that recorded a distance — 0 means the week is unmeasured, not empty. */
+        measuredRuns: number;
+        pacedDurationMin: number;
+        pacedMiles: number;
+      }
     >();
 
     for (const log of runLogs) {
       const weekStart = startOfWeekUTC(log.date);
       const key = weekStart.toISOString();
-      const bucket = buckets.get(key) ?? { weekStart, totalMiles: 0, pacedDurationMin: 0, pacedMiles: 0 };
+      const bucket = buckets.get(key) ?? {
+        weekStart,
+        totalMiles: 0,
+        measuredRuns: 0,
+        pacedDurationMin: 0,
+        pacedMiles: 0,
+      };
       bucket.totalMiles += log.distanceMiles ?? 0;
+      if (log.distanceMiles !== null) bucket.measuredRuns++;
       if (log.distanceMiles) {
         bucket.pacedDurationMin += log.durationMin;
         bucket.pacedMiles += log.distanceMiles;
@@ -327,7 +341,7 @@ const getRunningProgress = protectedProcedure
       .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
       .map((b) => ({
         weekStart: b.weekStart,
-        totalMiles: b.totalMiles,
+        totalMiles: b.measuredRuns > 0 ? b.totalMiles : null,
         averagePaceMinPerMile: b.pacedMiles > 0 ? b.pacedDurationMin / b.pacedMiles : null,
       }));
 
@@ -338,7 +352,7 @@ const emptyDashboard: DashboardOutput = {
   plan: null,
   plannedWorkouts: [],
   sessionLogs: [],
-  weeklyMileageTotal: 0,
+  weeklyMileageTotal: null,
   weeklyMileageHistory: [],
 };
 
@@ -379,16 +393,33 @@ const getDashboard = protectedProcedure
       (s) => s.date >= weekStart && s.date < weekEnd,
     );
 
-    const weeklyMileageTotal = sessionLogs.reduce((sum, s) => sum + (s.distanceMiles ?? 0), 0);
+    // Every logged distance this week, across all runs. Null rather than 0
+    // when sessions were logged but none carried a distance — a duration-only
+    // week is "not measured in miles," which is a different fact from "you ran
+    // nothing," and the dashboard renders them differently.
+    const measuredThisWeek = sessionLogs.filter((s) => s.distanceMiles !== null);
+    const weeklyMileageTotal =
+      measuredThisWeek.length === 0
+        ? null
+        : measuredThisWeek.reduce((sum, s) => sum + (s.distanceMiles ?? 0), 0);
 
+    // The planned/logged chart is long-run distance on both sides. Only long
+    // runs carry a planned distance (everything else is prescribed by
+    // duration), so counting every logged run against that planned number
+    // would compare two different quantities and read as a weekly overshoot.
     const plannedMilesByWeek = new Map<number, number>();
+    const distancePlannedWorkoutIds = new Set<string>();
     for (const w of allPlannedWorkouts) {
       const miles = (w.prescription as WorkoutPrescription).distanceMiles ?? 0;
+      if (miles > 0) distancePlannedWorkoutIds.add(w.id);
       plannedMilesByWeek.set(w.weekNumber, (plannedMilesByWeek.get(w.weekNumber) ?? 0) + miles);
     }
 
     const actualMilesByWeek = new Map<number, number>();
     for (const s of sessionLogsSincePlanStart) {
+      if (s.plannedWorkoutId === null || !distancePlannedWorkoutIds.has(s.plannedWorkoutId)) {
+        continue;
+      }
       const week = Math.floor((s.date.getTime() - plan.startDate.getTime()) / MS_PER_WEEK) + 1;
       actualMilesByWeek.set(week, (actualMilesByWeek.get(week) ?? 0) + (s.distanceMiles ?? 0));
     }
@@ -398,7 +429,11 @@ const getDashboard = protectedProcedure
       return {
         weekNumber,
         plannedMiles: plannedMilesByWeek.get(weekNumber) ?? 0,
-        actualMiles: actualMilesByWeek.get(weekNumber) ?? 0,
+        // Weeks past the current one haven't happened, so they have no actual
+        // to report — null rather than 0, which would draw the whole remaining
+        // plan as missed training.
+        actualMiles:
+          weekNumber > currentWeek ? null : (actualMilesByWeek.get(weekNumber) ?? 0),
       };
     });
 
