@@ -548,9 +548,10 @@ const getCoachFeedback = protectedProcedure
       return { status: "ok", guidance: feedback.guidance, concern: feedback.concern };
     } catch (error) {
       // A coach outage must not take the dashboard down with it — the card
-      // renders its unavailable state and everything else still works.
+      // renders its failed state and everything else still works. Distinct
+      // from "unavailable": a key *is* configured, so the fix isn't config.
       console.error("Coach feedback request failed:", error);
-      return unavailableCoachFeedback;
+      return { status: "failed", guidance: null, concern: null };
     }
   });
 

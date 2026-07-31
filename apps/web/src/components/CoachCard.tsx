@@ -83,6 +83,15 @@ function CoachBody({ state }: { state: CoachState }) {
     );
   }
 
+  if (state.data.status === "failed") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        The coach is configured but couldn't be reached just now. The server log has the reason —
+        an expired key and an exhausted credit balance both land here.
+      </p>
+    );
+  }
+
   if (state.data.status === "no_plan") {
     return (
       <p className="text-sm text-muted-foreground">
