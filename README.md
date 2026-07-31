@@ -15,36 +15,36 @@ Bun workspaces monorepo: Express + Prisma/Postgres backend, Vite/React frontend,
 ### Request flow
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph browser["Browser — apps/web"]
-        UI["React + Vite + Tailwind/ShadCN"]
+        direction TB
+        UI["React + Vite<br/>Tailwind / ShadCN"]
+        CLERKJS["Clerk React<br/>getToken()"]
         CLIENT["oRPC client singleton<br/>lib/orpc.ts"]
-        CLERKJS["Clerk React getToken()"]
         UI --> CLIENT
-        CLERKJS -.->|"setClerkTokenGetter bridge"| CLIENT
+        CLERKJS -.->|"setClerkTokenGetter"| CLIENT
     end
 
-    CLIENT -->|"POST /rpc/* — Authorization: Bearer jwt"| CORS
-
     subgraph server["apps/server — Express"]
+        direction TB
         CORS["cors(WEB_ORIGIN)"]
         CLERKMW["clerkMiddleware"]
-        CTX["getAuth(req) builds AppContext"]
+        CTX["getAuth(req)<br/>builds AppContext"]
         HANDLER["RPCHandler(router)"]
         CORS --> CLERKMW --> CTX --> HANDLER
     end
 
-    subgraph contracts["packages/contracts — the shared typed contract"]
-        GUARD["protectedProcedure — throws UNAUTHORIZED if no auth"]
-        ZIN["Zod .input() validation"]
-        PROC["procedure handler — router.ts"]
-        ZOUT["Zod .output() validation"]
+    subgraph contracts["packages/contracts — one shared typed contract"]
+        direction TB
+        GUARD["protectedProcedure<br/>UNAUTHORIZED if no auth"]
+        ZIN["Zod .input()"]
+        PROC["handler — router.ts"]
+        ZOUT["Zod .output()"]
         GUARD --> ZIN --> PROC --> ZOUT
     end
 
-    HANDLER --> GUARD
-
     subgraph pure["Pure packages — no DB, no network"]
+        direction TB
         PLAN["plan-engine"]
         STR["strength-engine"]
         SCHED["scheduling"]
@@ -52,13 +52,22 @@ flowchart TD
         STR --> SCHED
     end
 
+    subgraph data["Data and external"]
+        direction TB
+        PRISMA["Prisma — packages/db"]
+        PG[("Postgres")]
+        USERSYNC["getOrCreateUser<br/>Clerk backend API,<br/>first creation only"]
+        CLAUDE["Anthropic API<br/>AI Coach"]
+        PRISMA --> PG
+    end
+
+    CLIENT -->|"POST /rpc/*<br/>Bearer jwt"| CORS
+    HANDLER --> GUARD
     PROC --> PLAN
     PROC --> STR
-    PROC --> USERSYNC["getOrCreateUser — Clerk backend API, first creation only"]
-    PROC --> PRISMA["Prisma client — packages/db"]
-    PRISMA --> PG[("Postgres")]
-    PROC -.->|"optional, allowed to fail"| CLAUDE["Anthropic API — AI Coach"]
-
+    PROC --> PRISMA
+    PROC --> USERSYNC
+    PROC -.->|"optional, allowed to fail"| CLAUDE
     ZOUT -->|"typed response"| CLIENT
 
     classDef optional stroke-dasharray: 5 5
