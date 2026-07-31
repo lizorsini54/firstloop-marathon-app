@@ -12,3 +12,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Playwright screenshots from e2e verification runs
+e2e/screenshots/
