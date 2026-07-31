@@ -2,7 +2,7 @@ import type { GetPlanOverviewOutput } from "@firstloop/contracts";
 import { computePhaseBoundaries, phaseForWeek } from "@firstloop/plan-engine";
 import type { Phase } from "@firstloop/plan-engine";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PhaseArc } from "../components/PhaseArc";
@@ -63,23 +63,11 @@ export function Plan() {
 
   const { plan, weeks } = state.data;
 
+  // Same as Dashboard: no plan means there's nothing to view, so send them to
+  // the page that creates one rather than to a dead end. See DECISIONS.md,
+  // Checkpoint 17.
   if (!plan) {
-    return (
-      <div className="mx-auto max-w-lg p-6">
-        <p className="font-display text-2xl font-bold uppercase tracking-tight">
-          No plan on the board yet
-        </p>
-        <p className="mt-2 text-muted-foreground">
-          Tell us your race day and we'll build the weeks back from it.
-        </p>
-        <Link
-          to="/intake"
-          className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          Set your goal
-        </Link>
-      </div>
-    );
+    return <Navigate to="/intake" replace />;
   }
 
   const boundaries = computePhaseBoundaries(plan.totalWeeks);
