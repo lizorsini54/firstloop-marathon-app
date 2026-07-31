@@ -4,7 +4,10 @@ import { Link, useLocation } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/plan", label: "Plan" },
+  // "Schedule", not "Plan": every other item here is a single noun, and "Plan"
+  // sitting two items from "Goal" reads as a verb — plan your training —
+  // when the page is strictly a read-only view of the plan you already have.
+  { to: "/plan", label: "Schedule" },
   { to: "/log", label: "Log" },
   { to: "/history", label: "History" },
   { to: "/progress", label: "Progress" },

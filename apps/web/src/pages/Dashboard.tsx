@@ -1,6 +1,6 @@
 import type { DashboardOutput } from "@firstloop/contracts";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { CoachCard } from "../components/CoachCard";
 import { MileageChart } from "../components/MileageChart";
 import { PhaseArc } from "../components/PhaseArc";
@@ -49,23 +49,12 @@ export function Dashboard() {
 
   const { plan, plannedWorkouts, sessionLogs, weeklyMileageTotal } = state.data;
 
+  // Nothing here means anything without a plan, and the nav can't lead someone
+  // to the one page that fixes that — "Goal" sits last, and generating a plan
+  // sends you back here, so the real first-run sequence runs backwards against
+  // the nav's own order. Route instead of asking them to find it.
   if (!plan) {
-    return (
-      <div className="mx-auto max-w-lg p-6">
-        <p className="font-display text-2xl font-bold uppercase tracking-tight">
-          No plan on the board yet
-        </p>
-        <p className="mt-2 text-muted-foreground">
-          Tell us your race day and we'll build the weeks back from it.
-        </p>
-        <Link
-          to="/intake"
-          className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          Set your goal
-        </Link>
-      </div>
-    );
+    return <Navigate to="/intake" replace />;
   }
 
   return (
@@ -128,7 +117,14 @@ export function Dashboard() {
               <span className="text-right font-mono text-muted-foreground">
                 {describePrescription(w.prescription)}
               </span>
-              {w.type === "LIFT" && w.prescription.exercises ? (
+              {/*
+                Every planned session is loggable except a rest day. This was
+                gated on `w.type === "LIFT"` from Checkpoint 9 through 16, so
+                runs — the majority of every week, including the long run — had
+                no way to be logged against their planned workout at all. See
+                DECISIONS.md, Checkpoint 17.
+              */}
+              {w.type !== "REST" ? (
                 <button
                   type="button"
                   onClick={() => {

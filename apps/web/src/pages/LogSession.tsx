@@ -20,7 +20,13 @@ type WorkoutType = "RUN" | "LIFT" | "BIKE" | "REST";
 type SubmitState = { status: "idle" | "submitting" } | { status: "error"; error: string };
 
 type LinkedExercise = { name: string; setsReps: string; isMainLift?: boolean; notes?: string };
-type LinkedPrescription = { displayName?: string; block?: string; exercises?: LinkedExercise[] };
+type LinkedPrescription = {
+  displayName?: string;
+  block?: string;
+  exercises?: LinkedExercise[];
+  /** Prescribed minutes for a run or bike session — prefilled into the form below. */
+  durationMin?: number;
+};
 type LogSessionNavState = {
   plannedWorkoutId?: string;
   type?: WorkoutType;
@@ -64,7 +70,12 @@ export function LogSession() {
   const [date, setDate] = useState(today);
   const [type, setType] = useState<WorkoutType>(navState?.type ?? "RUN");
   const [distanceMiles, setDistanceMiles] = useState("");
-  const [durationMin, setDurationMin] = useState("");
+  // Arriving from a dashboard row, the plan already told the runner how long
+  // this session was meant to be — starting the field empty just asks them to
+  // retype it. Still fully editable; it's what they planned, not what they did.
+  const [durationMin, setDurationMin] = useState(
+    navState?.prescription?.durationMin ? String(navState.prescription.durationMin) : "",
+  );
   const [rpe, setRpe] = useState("5");
   const [notes, setNotes] = useState("");
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>(
