@@ -1,103 +1,198 @@
-# Cadenza — walkthrough video outline
+# Cadenza — walkthrough script
 
-Target length **5–8 minutes**; this runs to roughly **7:20**, leaving headroom. Structure follows [WRITEUP.md](./WRITEUP.md), so anything said here can be checked against that document and against [DECISIONS.md](../DECISIONS.md).
+Target **5–8 minutes**. The script below is **~1,230 spoken words**: roughly **7:15 at a brisk pace, 8:10 if you take your time** — inside the target, but not by much, and the section timings sum to 8:00. Two passages are marked *optional cut*; dropping both takes about 40 seconds off without losing an argument. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
 
-> **Ready to record.** Checkpoints 16 and 17 have landed. The seeded demo runs 3 running days / 0 bike / Glute Gladiator; the intake form defaults to 3 running days / 1 bike / custom-2; both are verified to produce no day-economy warning. Section 5 needs a plan built deliberately to trip it — the config is given there.
+**The through-line:** stated in section 0, closed in section 8 — *everything here is checkable, and the places where the system proved me wrong are in the record.* Sections 5, 7 and 8 are the evidence. Without that spine this is a competent tour; with it, it's an argument.
 
-**The through-line.** State it in section 0 and pay it off in section 8: *everything here is checkable, and the places where the system proved me wrong are in the record.* Three sections are evidence for that one claim — the check that overruled the plan (5), the bug that got past every test (7), and the limitations named rather than discovered later (8). Without the thesis this is a competent tour. With it, it's an argument.
+## Recording notes
+
+- **Record in sections and cut.** Nothing here is a live demo, so there's no reason to take it in one pass.
+- **Section 4 runs `bun run check` for real** — start it, then cut the wait in the edit. Showing it actually run is worth more than a screenshot, and section 7 depends on the audience believing it.
+- **Set up before you roll:** demo account seeded and signed in; a second browser profile or window for the section 5 plan so you're not deleting the demo; a merged PR open in a tab for the CI shot.
+- **Script is written to be spoken.** Read it out loud once before recording — anything that trips you is a line to rewrite, not to power through.
 
 ---
 
-## 0. Open — 30s
+## 0. Open — 0:30
 
-Name the persona in one sentence: a first-time marathoner who is also a seasoned lifter and an active cyclist. Say what the brief asked for — authenticated UI plus the ability to record a session, explicitly not feature-complete — and that everything past that was a deliberate choice, revisited more than once.
+**On screen:** the dashboard, static. Don't interact yet.
 
-Then state the thesis, plainly, before anything is on screen: the interesting part of this project isn't the feature list, it's the number of times the system caught something I'd got wrong, and that all of it is written down.
+**Say:**
 
-## 1. The diagram first — ~50s
+> This is Cadenza — a marathon training app for a first-time marathoner who's also a serious lifter and rides most weeks.
+>
+> The brief asked for an authenticated app where you can record a session, and said it needn't be feature-complete. I built past that deliberately.
+>
+> But the part worth your time isn't the feature list. It's the number of times this system caught something I'd got wrong — and the fact that all of it is written down.
 
-Screen share the README's two Mermaid diagrams. Do not open the app yet.
+---
 
-**Request flow.** Trace one call end to end: browser → oRPC client with a Clerk bearer token → Express → `clerkMiddleware` → `protectedProcedure` throwing `UNAUTHORIZED` before any handler runs → Zod input validation → handler → Prisma → Postgres → Zod output validation → typed response. The point to land: frontend and backend share *one* contract, and the web app imports the router's type only.
+## 1. The shape of it — 0:50
 
-Call out the pure packages hanging off the handler — `plan-engine`, `strength-engine`, both onto `scheduling` — with no database or network dependency at all. That fact does real work in section 6.
+**On screen:** the README's two Mermaid diagrams. Don't open the app.
 
-**Deployment topology.** Three Railway services from one repo, deploying from `main`. Name the single environment as a decision: the dev/pre-prod/prod split was built completely and then reverted when it needed a paid plan. It reads as judgment when you say it and as an omission when you don't.
+**Say:**
 
-## 2. The design pass — ~45s
+> Before the app, the architecture. One request.
+>
+> The browser calls an oRPC client that attaches a Clerk bearer token. Express hands it to Clerk's middleware, then to a protected procedure that throws Unauthorized before any handler runs. Zod validates the input, the handler reaches Postgres through Prisma, and Zod validates what comes back.
+>
+> Frontend and backend share one contract — the web app imports the router's *type*, never its implementation.
+>
+> And these three packages hanging off the handler touch no database and no network at all. That matters later.
 
-Do this before the feature demo, while the UI is still new, so the look registers on its own terms rather than as background to a workflow.
+**Do:** switch to the deployment diagram.
 
-- **Register:** instrument panel / GPS watch face, not a wellness app. Light is the designed identity, not a dark-mode afterthought.
-- **Type:** three roles — Big Shoulders Display, IBM Plex Sans, IBM Plex Mono — deliberately not Inter or Space Grotesk. Zoom in on numbers: mileage, pace, duration, RPE, dates all get a monospaced tabular register distinct from prose. For someone who reads a watch face all day, that was the highest-leverage typographic call in the app.
-- **Signature element:** the phase arc. Computed client-side from `computePhaseBoundaries`, so it shows *this* plan's real base/build/peak/taper proportions rather than a decorative fixed shape.
+> Three Railway services from one repo, deploying from main. One environment — I built the full dev, pre-prod and prod split, then reverted it when it turned out to need a paid plan. That's in the decisions log as a cost tradeoff, not an omission.
 
-## 3. Golden path — ~1 min 15s
+---
 
-Move briskly. This is the least distinctive part of the video and it's carrying setup for later sections, not making its own argument.
+## 2. The design — 0:45
 
-Sign in → intake → Schedule → log a session → dashboard.
+**On screen:** the dashboard. Zoom on the numbers, then the phase arc.
 
-- On **intake**: the feasibility check runs live in the browser, because `plan-engine` is a pure package the web app imports directly. It names a short runway and never blocks plan creation — a stated coaching judgment call, not a formula pretending to be science.
-- On **Schedule**: tabs by phase, accordion by week. Scroll far enough to show strength sessions coordinating with running days rather than sitting beside them.
-- On **logging**: click **"Log this" on a run row**, not the generic button. Type and planned duration arrive prefilled; distance is deliberately blank because the plan prescribes that run by duration. **Section 7 calls back to this exact click** — it has to be the one the audience sees.
-- If a key is configured, trigger the **AI Coach** once and say what it is: a reactive comment on recent training, not the thing making the schedule safe.
+**Say:**
 
-## 4. What keeps it honest — ~40s
+> A quick word on the look, because it's deliberate. The register I wanted was instrument panel — a GPS watch face, not a wellness app.
+>
+> Three typefaces doing three jobs: a condensed display face for headings, a humanist sans for prose, and a mono for every number. Mileage, pace, duration, RPE, dates — all tabular, all visually separate from words. For someone who reads a watch face every day, that was the highest-leverage call in the design.
+>
+> And this arc is the signature element. It's computed from the real plan, so those base, build, peak and taper proportions are *this* plan's, not a decorative shape.
 
-This was an explicit requirement in the brief — verification tooling running locally and in CI — and it's also the setup for section 7. Show it, don't describe it.
+---
 
-Split screen or cut between two things:
+## 3. Using it — 1:15
 
-- **Locally:** `bun run check` — `tsc -b`, ESLint, Knip for dead code, then 77 unit tests. One command, and it's the pre-commit gate.
-- **In CI:** a pull request with three required checks — `check`, `integration` (10 tests against a real Postgres via Testcontainers), and `e2e` (3 Playwright tests against the whole stack). All three must pass to merge into `main`. Every checkpoint in this project went in through one of these.
+Move briskly. This is the least distinctive part of the video and it's setting up sections 5 and 7.
 
-Say why the split exists: Testcontainers needs Docker and Playwright needs the stack running, so neither belongs in the fast local loop — but both are still required before anything merges.
+**On screen:** intake → generate → Schedule → dashboard.
 
-**Do not oversell this.** The next-but-one section is about what it all missed, and that only works if you've been straight here.
+**Say:**
 
-## 5. The day-economy warning, on purpose — ~1 min
+> Now the product. A race date and my current weekly mileage.
+>
+> This feasibility check runs in the browser, because the plan engine is a pure package the web app imports directly. It tells you if your runway is short, and it never blocks you. That's a coaching judgment call, and I've labelled it as one rather than dressing it up as science.
 
-Build a plan with a deliberately tight day economy and let the warning fire on camera. **Use 4 running days / 1 bike day / "Follow a program"** — verified to produce both halves: 39 of 39 weeks understaffed, and Lower A / Lower B back-to-back in 33 of 39.
+**Do:** generate, then open Schedule.
 
-Two things while it's on screen:
+> Thirty-nine weeks. Tabs by phase, weeks inside them. And the strength sessions are placed *around* the running, not beside it — the scheduler knows which days are hard.
 
-1. It reports proportionally and honestly ("N of 39 weeks"), with no minimum threshold. A single bad week still gets named.
-2. It exists because the alternative was what the code used to do — silently drop the session. This is the fix for a real bug, not a decorative banner.
+**Do:** back to the dashboard. Click **"Log this" on a run row** — not the generic button.
 
-Then the part worth slowing down for. That configuration was the app's own default. The plan for fixing it was to nudge the running and bike day counts. **Sweeping the whole configuration space through the check itself showed that was impossible** — the program needs four free days a week, every running or bike day consumes one, and exactly one configuration in the space keeps the full program. So the defaults split: the seeded demo gives up its bike day to keep the real program visible, and a new user's first plan defaults to a lighter custom program with an actual rest day.
+> I'll log Monday's run from the row itself. Type and duration arrive prefilled, because the plan already said what it wanted.
+>
+> Distance is blank on purpose. That run is prescribed by time, not distance, and the app won't invent a number it doesn't have.
+>
+> Remember this click.
 
-The line to land: **the check overruled the plan, and nothing was thresholded or silenced to make the warning go away.** The warning was telling the truth the whole time — four sessions genuinely did not fit in two days.
+**Do:** trigger the coach if a key is configured. *(Second optional cut — section 7 explains what the coach does anyway.)*
 
-## 6. One architecture story, told properly — ~1 min 15s
+> And that's the coach. It comments on how the last couple of weeks actually went. It is not what makes the schedule safe.
 
-The swappable-program claim, tested by accident rather than by assertion.
+---
 
-The strength program is data; the scheduler is generic code reading constraints out of that data. Then a custom strength mode was requested, with no named program at all. That surfaced one boolean quietly doing two jobs — avoiding the day before a hard run, *and* enforcing spacing between paired sessions — which only worked because Glute Gladiator happened to need both together. Splitting it into two independent properties made custom mode trivial. Then running needed the same day-placement capability for its own frequency fix, and rather than write it a third time it was extracted into `packages/scheduling`, which both engines now depend on.
+## 4. What's supposed to catch things — 0:40
 
-The line to land: the architecture held up under reuse nobody planned for, which is a better test than it holding up in the description of it.
+**On screen:** terminal, then a merged PR's checks.
 
-## 7. What all of that still missed — ~1 min 15s
+**Do:** start `bun run check` for real. Cut the wait.
 
-The payoff for section 4. Open by pointing back at it: every one of those checks was green.
+**Say:**
 
-**The "log this" action that only worked for lifts.** Call back to logging that run in section 3 — *that button did not exist for runs until the last checkpoint of this project.* It had been gated to strength sessions since the strength program was added, so every run, including the long run, had no way to be logged against its plan.
+> Before I show you what this got wrong, here's what's meant to catch it.
+>
+> One command locally — TypeScript, ESLint, Knip for dead code, and the unit tests. That's the pre-commit gate.
 
-Three beats, in this order, because each makes the next worse:
+**Do:** cut to the PR checks.
 
-1. **Nothing caught it.** Type checker satisfied. All 90 tests green. It survived a coach-persona and designer-persona review of the product.
-2. **The decision log confidently recorded the opposite.** An earlier checkpoint justified leaving the full plan view read-only by citing this action's existence on the dashboard, treating the two as a deliberate matched pair. The pair never existed for runs. Be blunt: documentation asserting something false is worse than no documentation, and the log now says so next to the original decision, which still stands.
-3. **The cost was invisible and downstream.** The Coach decides what you missed by checking whether a logged session links back to a planned one. A runner logging every session faithfully through the generic form — the only route they had — would have been told they'd missed all of them. And the seeded demo data sets that link directly, which is exactly why eight weeks of it never showed the problem.
+> And in CI, three required checks on every pull request. That same command, an integration suite against a real Postgres in a container, and Playwright against the whole stack. All three have to pass to merge.
+>
+> Every checkpoint in this project went in through that. Ninety tests, all green.
 
-The line to land: **it took a person clicking the thing.** No test could have found this, because the fixture that made the tests realistic was also the fixture that hid the bug.
+> **Don't oversell this.** Two sections from now is about what it all missed, and that only works if you were straight here.
 
-Then two more, fast, as evidence this wasn't a one-off:
+---
 
-- **The six-week silent drop** — a strength session disappearing from weeks 31–36, visible only by reading a full 39-week plan end to end.
-- **450 orphaned session logs** — the Coach reporting 80-plus-mile weeks on a plan whose longest run is 9.9 miles, traced to a foreign key set to null rather than cascade.
+## 5. A warning, fired on purpose — 1:00
 
-## 8. Close — ~30s
+**On screen:** intake with **4 running days / 1 bike day / "Follow a program"**, then the warning.
 
-Name what isn't there, without hedging: no cutback weeks in base and build, a fixed peak long-run distance, strength progression that steps at block boundaries rather than week to week, interference rules that are correct but invisible in the UI, and no planned distance for runs prescribed by duration — the app now says so plainly wherever that number appears, which is not the same as having solved it.
+**Say:**
 
-Then close the loop opened in section 0. Every one of those was found, written down, and left visible rather than discovered by whoever used the app next — and the same is true of the three times the system proved me wrong on camera. Point at where it's all checkable: `DECISIONS.md` logs every real decision as it was made, the write-up was verified against the codebase before it was committed, and one claim in it didn't survive that check and was rewritten.
+> Here's a plan built to fail. Four running days, a bike day, and the full strength program.
+
+**Do:** generate. Let the warning render.
+
+> There it is. It's telling me the schedule can't fit what it promised. Thirty-nine weeks out of thirty-nine come up short on sessions, and two lower-body days land back to back in thirty-three of them.
+>
+> Two things. It reports proportionally, and there's no threshold — a single bad week still gets named. And it exists because the old behaviour was to silently drop the session instead.
+
+**Beat. Slow down here.**
+
+> Now — that configuration was this app's own default. My plan was to nudge the day counts until it stopped complaining.
+>
+> So I swept the whole configuration space through the check itself. Only one combination keeps the full program at all. The program needs four free days a week, and every run or ride takes one away.
+>
+> The check was right and I was wrong. I moved the defaults. I never touched the check.
+
+---
+
+## 6. One architecture claim, tested by accident — 1:15
+
+**On screen:** the three pure packages, or the program data file next to the scheduler.
+
+**Say:**
+
+> One architecture claim, and how it got tested without me arranging it.
+>
+> The strength program is data. The scheduler is generic code reading constraints out of that data. Claims like that are easy to make and hard to prove.
+>
+> Then I needed a custom mode — no named program, just a number of days a week. And that surfaced a boolean quietly doing two jobs: keep this session off the day before a hard run, *and* keep paired sessions apart. Different rules. They only looked like one because this particular program needs both, on the same sessions. So I split them.
+>
+> Then running needed the same day-placement logic for its own fix. Rather than write it a third time I pulled it into its own package, and both engines depend on it now.
+>
+> The architecture held up under reuse I hadn't planned for. That's a real test. Holding up in the paragraph describing it isn't.
+
+---
+
+## 7. What all of that still missed — 1:15
+
+**On screen:** the dashboard's current week. Point at a run row.
+
+**Say:**
+
+> Everything I just showed you was green. Here's what got past it.
+>
+> Remember that click — logging a run from the dashboard. That button did not exist for runs until the final checkpoint of this project. It had been there for strength sessions only, since the day I added the strength program.
+
+**Three beats. Each one makes the next worse.**
+
+> Nothing caught it. Types fine, ninety tests passing, and it survived a review where I had two personas actually use the product rather than read the code.
+>
+> Second — my own decision log said the opposite. An earlier checkpoint justified leaving another view read-only *because the dashboard already had this action*. It didn't, for runs. Documentation asserting something false is worse than none, and the log now says that, next to the original decision, which still stands.
+>
+> Third, the real cost. The coach works out what you missed by checking that link back to the plan. Someone logging every run faithfully, through the only route they had, would have been told they'd missed all of them. And the seed data sets that link directly — which is precisely why eight weeks of demo data never showed it.
+
+**Beat.**
+
+> It took a person clicking the thing. No test was going to find it, because the fixture that made the tests realistic was the same fixture hiding the bug.
+
+**Fast, as evidence it wasn't a one-off.** *(First optional cut if you're running long — the section still lands without it.)*
+
+> Two others. A strength session silently vanishing from weeks thirty-one to thirty-six, visible only by reading a full plan end to end. And four hundred and fifty orphaned session logs — the coach reporting eighty-mile weeks on a plan whose longest run is under ten.
+
+---
+
+## 8. Close — 0:30
+
+**On screen:** back to the dashboard, or `DECISIONS.md`.
+
+**Say:**
+
+> What's not here. No cutback weeks in base and build. The peak long run is a fixed number rather than scaled to the runner. Strength progresses by block, not week to week. And the scheduler's spacing rules are correct but invisible in the interface.
+>
+> All named. None of them left for you to find.
+>
+> And that's the point. Three times in this video the system told me I was wrong — and every one of those is in the decisions log, written when it happened rather than reconstructed for the recording.
+>
+> Thanks for watching.
