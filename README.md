@@ -140,13 +140,15 @@ Web app on http://localhost:5173, server on http://localhost:3001.
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | Matches `docker-compose.yml` as shipped; no change needed for local work |
-| `SERVER_PORT` | yes | `3001` locally. `PORT` wins over it when set (Railway injects `PORT`) |
-| `WEB_ORIGIN` | yes | Full origin **including scheme** — used for CORS |
-| `CLERK_SECRET_KEY` | yes | Clerk dashboard → API keys. Needed for any authenticated route |
-| `CLERK_PUBLISHABLE_KEY` | yes | Same Clerk instance as the secret key |
+| `CLERK_SECRET_KEY` | yes | Clerk dashboard → API keys. The server refuses to boot without it |
+| `CLERK_PUBLISHABLE_KEY` | yes | Same Clerk instance as the secret key; also validated at boot |
 | `VITE_API_URL` | yes | Full URL **including scheme** — a bare domain breaks the oRPC client's URL parsing |
 | `VITE_CLERK_PUBLISHABLE_KEY` | yes | Same value as `CLERK_PUBLISHABLE_KEY`; the `VITE_` prefix is what exposes it to the client |
+| `SERVER_PORT` | no | Defaults to `3001`. `PORT` wins over it when set, which is how Railway injects the port |
+| `WEB_ORIGIN` | no | Defaults to `http://localhost:5173`. Used for CORS; in deployment it needs the full origin **including scheme** |
 | `ANTHROPIC_API_KEY` | no | Powers the AI Coach card only. Leave it unset and that endpoint reports itself unavailable — nothing else breaks, and no test or CI run needs it |
+
+Only the Clerk pair and `DATABASE_URL` are genuinely load-bearing: `apps/server/src/env.ts` validates its environment with Zod at boot and fails fast on those, while `SERVER_PORT` and `WEB_ORIGIN` carry working local defaults. `.env.example` ships every one of them with sensible local values already filled in except the Clerk keys.
 
 Clerk keys are the one thing you have to supply yourself: create a free Clerk application and use its development instance keys locally.
 
