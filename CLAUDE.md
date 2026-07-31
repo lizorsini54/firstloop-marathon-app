@@ -71,7 +71,7 @@ Auth: `protectedProcedure` (in `procedures.ts`) wraps `publicProcedure` with mid
 
 ## Testing
 
-`bun test` (Bun's built-in runner, Jest-compatible API) — no Vitest. Unit tests live in `packages/scheduling`, `packages/plan-engine`, and `packages/strength-engine`; `packages/contracts/src/router.integration.test.ts` (Testcontainers, real Postgres) is excluded from the fast `bun run test` path and run separately via `bun run test:integration`. `dist/` is excluded from discovery via `--path-ignore-patterns` in the root `test` script, since `tsc -b`'s compiled output would otherwise get picked up alongside the source and silently double every test run.
+`bun test` (Bun's built-in runner, Jest-compatible API) — no Vitest. Unit tests live in `packages/scheduling`, `packages/plan-engine`, and `packages/strength-engine`, plus `packages/contracts/src/lib/coach.test.ts` (the coach's snapshot math and prompt assembly, network-free and key-free); `packages/contracts/src/router.integration.test.ts` (Testcontainers, real Postgres) is excluded from the fast `bun run test` path and run separately via `bun run test:integration`. `dist/` is excluded from discovery via `--path-ignore-patterns` in the root `test` script, since `tsc -b`'s compiled output would otherwise get picked up alongside the source and silently double every test run.
 
 ## Decisions log
 
