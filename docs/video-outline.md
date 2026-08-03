@@ -1,11 +1,16 @@
 # Cadenza — walkthrough script
 
-Target **5–8 minutes**. The script is **~1,330 spoken words — 7:50 brisk, 8:50 if you take your time.** Adding the rubric paragraph to section 0 used up the slack, so:
+Target **5–8 minutes**. The script is **~1,390 spoken words**, which is **8:10 brisk / 9:15 measured — over the target.** Taking the marked cut in section 7 gets it to ~1,345, or **7:55 / 8:55.** Still tight.
 
-- **Take the marked cut in section 7** (45 words, ~17 seconds). That brings it to ~1,285 — **7:30 brisk, 8:30 measured.**
-- **Pace is now the real lever.** At 170 words a minute you're comfortably inside; at 150 you're over. Read the long paragraphs briskly — especially section 0's rubric list, which is meant to sound like something you're getting out of the way.
+**To land comfortably inside eight minutes, cut roughly 150 more words.** Ranked by what costs least:
 
-Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
+1. **Section 3, the golden path** (154 words / ~0:58). Lowest value per second in the video — signing in and filling a form is table stakes, and sections 5 and 7 re-show the parts that matter. Cutting it to ~100 words is the cheapest 20 seconds available.
+2. **Section 7's "two others"** (45 words, already marked). Take this regardless.
+3. **Section 1's deployment paragraph** (~55 words). The diagram is on screen saying most of it; you could land it in one sentence.
+
+Don't buy time from sections 5, 7's main story, or 8 — those are the argument.
+
+Actual spoken length per section is listed in each heading, and they're measured from the script rather than estimated. Every factual claim is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
 
 **The through-line:** stated in section 0, closed in section 8 — *everything here is checkable, and the places where the system proved me wrong are in the record.* Sections 5, 7 and 8 are the evidence. Without that spine this is a competent tour; with it, it's an argument.
 
@@ -299,7 +304,7 @@ bun run check
 
 ---
 
-## 7. What all of that still missed — 1:15
+## 7. What all of that still missed — 1:55 (1:40 with the cut)
 
 **On screen:** the **Dashboard**, scrolled so the whole `THIS WEEK'S PLAN` table is in frame. You want all seven rows visible at once, because the argument is about which rows have the action and which don't.
 
@@ -321,7 +326,7 @@ bun run check
 
 **Then the payoff — say this immediately after, don't leave it implied:**
 
-> There's a ninety-first test now. It clicks that button on a run row and fails if it ever goes missing again. I checked it fails by putting the bug back, and while it failed, the original golden-path test still passed — which is exactly why nothing caught this the first time.
+> There's a ninety-first test now. It clicks that button on a run row and fails if it ever goes missing. I checked that by putting the bug back — and while the new test failed, the original golden-path test still passed. Which is exactly why nothing caught this the first time.
 >
 > Second — my own decision log said the opposite. An earlier checkpoint justified leaving another view read-only *because the dashboard already had this action*. It didn't, for runs. Documentation asserting something false is worse than none, and the log now says that, next to the original decision, which still stands.
 >
@@ -329,7 +334,7 @@ bun run check
 
 **Beat.**
 
-> It took a person clicking the thing. No test was going to find it, because the fixture that made the tests realistic was the same fixture hiding the bug.
+> It took a person clicking the thing. The fixture that made the tests realistic was the same fixture hiding the bug.
 
 **Fast, as evidence it wasn't a one-off.** ⚠️ ***Cut this if you need the time.*** Since the rubric paragraph went into section 0, this is the budget's only remaining slack — dropping it is what keeps the video under eight minutes at a measured pace. The section lands fine without it.
 
@@ -337,18 +342,24 @@ bun run check
 
 ---
 
-## 8. Close — 0:30
+## 8. Close — 1:00
 
-**On screen:** open `DECISIONS.md` and scroll slowly through it while you talk — not to any particular entry, just enough that the viewer registers its length and that every section is headed by a checkpoint. The file is the evidence for the closing claim, so it should be what's on screen when you make it.
+**On screen:** stay on whatever section 7 left up for the first paragraph — the close should feel like it's continuing a thought, not starting a new segment.
 
-**Do:** end on the **Dashboard** for the last line, so the video closes on the product rather than on a text file.
+**Do:** on "written down too", cut to `DECISIONS.md` and scroll slowly through it. Don't stop anywhere in particular; the point is its length and that every section is headed by a checkpoint. It's the evidence for the final claim, so it should be on screen while you make it.
+
+**Do:** cut back to the **Dashboard** for the last line, so the video ends on the product.
+
+**Note —** the shape here is: *why those three stories* → *why I built past the brief* → *what's missing* → *where to check*. Limitations come third, not first. Opening the close on what's absent is what made the old version sag.
 
 **Say:**
 
-> What's not here. No cutback weeks in base and build. The peak long run is a fixed number rather than scaled to the runner. Strength progresses by block, not week to week. And the scheduler's spacing rules are correct but invisible in the interface.
+> So — why those three things, out of everything I could have shown you?
 >
-> All named. None of them left for you to find.
+> Because they're where the system pushed back. A check that proved my own fix plan impossible. An architecture claim tested by a requirement I hadn't planned for. And a bug that sat in plain sight for eight checkpoints while my own notes claimed the opposite.
 >
-> And that's the point. Three times in this video the system told me I was wrong — and every one of those is in the decisions log, written when it happened rather than reconstructed for the recording.
+> I built past the brief deliberately — not to pad a demo, but because "sign in and record a session" puts no pressure on the design. Coordinating three disciplines across thirty-eight weeks does, and pressure is the only thing that shows you whether the judgment holds.
 >
-> Thanks for watching.
+> What's missing is written down too. No cutback weeks. A fixed peak long run. Spacing rules that are correct but invisible in the interface. Named, so you're not the one who finds them.
+>
+> It's all in the decisions log — written when it happened, not reconstructed for this video. That's the part I'd check.
