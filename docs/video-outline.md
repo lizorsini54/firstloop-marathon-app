@@ -1,6 +1,6 @@
 # Cadenza — walkthrough script
 
-Target **5–8 minutes**. The script below is **~1,230 spoken words**: roughly **7:15 at a brisk pace, 8:10 if you take your time** — inside the target, but not by much, and the section timings sum to 8:00. Two passages are marked *optional cut*; dropping both takes about 40 seconds off without losing an argument. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
+Target **5–8 minutes**. The script below is **~1,295 spoken words**: roughly **7:40 at a brisk pace, 8:40 if you take your time** — so it now runs slightly long, and section 8 timings sum to 8:00 before the section 7 addition. **Take at least one of the two passages marked *optional cut*** (about 40 seconds together) to land inside the target. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
 
 **The through-line:** stated in section 0, closed in section 8 — *everything here is checkable, and the places where the system proved me wrong are in the record.* Sections 5, 7 and 8 are the evidence. Without that spine this is a competent tour; with it, it's an argument.
 
@@ -71,7 +71,7 @@ Move briskly. This is the least distinctive part of the video and it's setting u
 
 > Now the product. A race date and my current weekly mileage.
 >
-> This feasibility check runs in the browser, because the plan engine is a pure package the web app imports directly. It tells you if your runway is short, and it never blocks you. That's a coaching judgment call, and I've labelled it as one rather than dressing it up as science.
+> This feasibility check runs in the browser as I type, because the plan engine is a pure package the web app imports directly — and the server runs the same function again when the plan is created. It tells you if your runway is short, and it never blocks you. That's a coaching judgment call, and I've labelled it as one rather than dressing it up as science.
 
 **Do:** generate, then open Schedule.
 
@@ -107,9 +107,11 @@ Move briskly. This is the least distinctive part of the video and it's setting u
 
 > And in CI, three required checks on every pull request. That same command, an integration suite against a real Postgres in a container, and Playwright against the whole stack. All three have to pass to merge.
 >
-> Every checkpoint in this project went in through that. Ninety tests, all green.
+> Every checkpoint in this project went in through that. Ninety-one tests, all green.
 
 > **Don't oversell this.** Two sections from now is about what it all missed, and that only works if you were straight here.
+
+> **Counts, as of this recording:** 77 unit (`bun run test`), 10 integration (Testcontainers), 4 Playwright — **91 total**. Re-run the three suites and re-count before you record if you've touched anything since; section 7 quotes these numbers back.
 
 ---
 
@@ -168,6 +170,10 @@ Move briskly. This is the least distinctive part of the video and it's setting u
 **Three beats. Each one makes the next worse.**
 
 > Nothing caught it. Types fine, ninety tests passing, and it survived a review where I had two personas actually use the product rather than read the code.
+
+**Then the payoff — say this immediately after, don't leave it implied:**
+
+> There's a ninety-first test now. It clicks that button on a run row and fails if it ever goes missing again. I checked it fails by putting the bug back, and while it failed, the original golden-path test still passed — which is exactly why nothing caught this the first time.
 >
 > Second — my own decision log said the opposite. An earlier checkpoint justified leaving another view read-only *because the dashboard already had this action*. It didn't, for runs. Documentation asserting something false is worse than none, and the log now says that, next to the original decision, which still stands.
 >
