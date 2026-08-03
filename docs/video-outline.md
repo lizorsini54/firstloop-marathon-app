@@ -10,18 +10,45 @@ Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7
 - **On screen / Do** — what to show and what to click.
 - **Note —** direction for you, never spoken.
 
-## Recording notes
+## Before you record anything
 
-- **Record in sections and cut.** Nothing here is a live demo, so there's no reason to take it in one pass.
-- **Section 4 runs `bun run check` for real** — start it, then cut the wait in the edit. Showing it actually run is worth more than a screenshot, and section 7 depends on the audience believing it.
-- **Set up before you roll:** demo account seeded and signed in; a second browser profile or window for the section 5 plan so you're not deleting the demo; a merged PR open in a tab for the CI shot.
-- **Script is written to be spoken.** Read it out loud once before recording — anything that trips you is a line to rewrite, not to power through.
+**1. Reseed. This is not optional.**
+
+```
+bun run --filter '@firstloop/db' db:seed
+```
+
+The app shows the *most recently created* plan for a user. Every plan you create — including every CI run of the e2e suite — becomes that plan. Left alone, the dashboard ends up showing a plan generated today with no history, instead of the demo persona nine weeks into training. Reseeding clears that user's plans and logs and rebuilds the canonical one.
+
+Expect two lines, roughly:
+
+```
+Seeded plan <id> (38 weeks, 266 planned workouts) with 53 logged sessions for firstloop_test+clerk_test@example.com
+  Left the 2026-08-02 long run unlogged so the coach has a concern to flag.
+```
+
+**2. Note the week count and read it off the screen, don't recite it.** The plan length is computed from today's date, so it drifts — it was 39 weeks when this script was drafted and 38 when it was last checked. Sections 3 and 5 both mention it; say whatever the screen says.
+
+**3. Record sections 3 and 5 LAST.** Both create a plan, and creating a plan buries the seeded demo. Order:
+
+| Order | Sections | State needed |
+|---|---|---|
+| First | 0, 1, 2, 4, 6, 7, 8 | Freshly seeded — demo nine weeks in, real logged history |
+| Last | 3, then 5 | Each creates a plan; nothing after them depends on the seed |
+
+If you re-take anything from the first group afterwards, **reseed again first.**
+
+**4. Have open before you roll:** the app signed in as the demo account; a terminal at the repo root; the CI run page (URL in section 4); the README on GitHub (URL in section 1).
+
+**5. Everything is recorded and cut** — nothing here is live, so take sections separately and as many times as you like.
+
+**6. Read the script out loud once first.** Anything that trips you is a line to rewrite, not to power through.
 
 ---
 
 ## 0. Open — 0:30
 
-**On screen:** the dashboard, static. Don't interact yet.
+**On screen:** the **Dashboard** page, signed in as the demo account, scrolled to the top so the header block and the phase arc are both visible — `WEEK 9 OF 38` / `BASE PHASE` on the left, `RACE DAY 2/27/2027` on the right, the arc below. Don't scroll, don't click.
 
 **Say:**
 
@@ -35,7 +62,16 @@ Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7
 
 ## 1. The shape of it — 0:50
 
-**On screen:** the README's two Mermaid diagrams. Don't open the app.
+**On screen:** the README on GitHub. Don't open the app at all in this section.
+
+**Setup:**
+1. Open **https://github.com/lizorsini54/firstloop-marathon-app/blob/main/README.md**
+2. **Collapse the file-tree sidebar** — the toggle sits immediately left of "Files", top left. Recovers about a quarter of the frame.
+3. Scroll to the **Architecture** heading, then the **Request flow** subheading beneath it.
+4. **Zoom the browser** to ~150% (`Cmd +` two or three times). Browser zoom scales the node labels; the diagram's own zoom control only scales it inside a fixed-height frame and leaves the text small.
+5. Keep GitHub in **light theme** — section 2 argues light is the designed identity, and a dark frame here undercuts that in the first minute.
+
+**Do:** as you trace the request, **pan along the path** rather than trying to hold the whole diagram in frame: `Browser — apps/web` → `apps/server — Express` → `packages/contracts` → `Data and external`. That's left-to-right, matching the order the lines below read in.
 
 **Say:**
 
@@ -47,7 +83,7 @@ Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7
 >
 > And these three packages hanging off the handler touch no database and no network at all. That matters later.
 
-**Do:** switch to the deployment diagram.
+**Do:** scroll down to the **Deployment topology** subheading. This diagram is laid out left-to-right and fits the frame without panning — three boxes: `Local development`, `GitHub`, `Railway — one environment, deploys from main`.
 
 > Three Railway services from one repo, deploying from main. One environment — I built the full dev, pre-prod and prod split, then reverted it when it turned out to need a paid plan. That's in the decisions log as a cost tradeoff, not an omission.
 
@@ -55,7 +91,13 @@ Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7
 
 ## 2. The design — 0:45
 
-**On screen:** the dashboard. Zoom on the numbers, then the phase arc.
+**On screen:** back to the app, **Dashboard** page, demo account. Three specific things in this order:
+
+1. **The header block** — `WEEK 9 OF 38` and `BASE PHASE` in the condensed display face, `RACE DAY / 2/27/2027` on the right in mono. Both registers in one frame.
+2. **The `THIS WEEK'S PLAN` table** — zoom in on the right-hand column (`30min · easy`, `10.1mi · long`, `Lower A: Glute + Hinge Strength · Peak block · 6 exercises`). This is where the mono-for-numbers argument is most visible: every duration, distance and count is tabular and set apart from the day and type columns.
+3. **The phase arc**, the band directly under the header with `BASE`, `BUILD`, `PEAK`, `TAPER` along the bottom and an orange dot marking the current week.
+
+**Note —** if you want the arc's proportions to be obviously plan-specific, open **Schedule** for a second: the tab row there reads `Base 15 / Build 13 / Peak 6 / Taper 4`, which is the same shape as the arc, in numbers. Optional; costs about eight seconds.
 
 **Say:**
 
@@ -71,7 +113,30 @@ Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7
 
 Move briskly. This is the least distinctive part of the video and it's setting up sections 5 and 7.
 
-**On screen:** intake → generate → Schedule → dashboard.
+**Record this section second-to-last** — it creates a plan, which replaces the seeded demo.
+
+### Step 1 — open the goal form
+
+**Do:** click **Goal** in the nav (last item, right-hand end). The page heading reads `SET YOUR GOAL`, with "We'll build the weeks back from your race day and current routine." underneath.
+
+**Note —** the route is `/intake` and the code calls it intake, but nothing in the UI says that word. Call it "the goal form" or just "here" on camera.
+
+### Step 2 — fill in exactly two fields
+
+Everything else is already set to a sensible default and you should visibly leave it alone — that's the point being made.
+
+| Field | What to do |
+|---|---|
+| `RACE DATE` | Type a date **9–12 months out**. Far enough that no feasibility warning fires. |
+| `RUNNING EXPERIENCE` | Leave — defaults to `I've finished one before` |
+| `CURRENT WEEKLY MILEAGE` | Type `20` |
+| `CURRENT RUNNING DAYS PER WEEK` | Leave — `3` |
+| `STRENGTH TRAINING` | Leave — `Custom` |
+| `LIFT DAYS PER WEEK` | Leave — `2` |
+| `BIKE DAYS PER WEEK` | Leave — `1` |
+| `INJURY FLAGS` | Leave all unchecked |
+
+**Optional, ~10 seconds, and it's the only way to show the live check working:** before typing the real race date, type one about **three months out** and let the amber feasibility warning appear under the form, then change it to the real date and watch it disappear. Without this the "runs in the browser as I type" line has nothing behind it.
 
 **Say:**
 
@@ -79,11 +144,34 @@ Move briskly. This is the least distinctive part of the video and it's setting u
 >
 > This feasibility check runs in the browser as I type, because the plan engine is a pure package the web app imports directly — and the server runs the same function again when the plan is created. It tells you if your runway is short, and it never blocks you. That's a coaching judgment call, and I've labelled it as one rather than dressing it up as science.
 
-**Do:** generate, then open Schedule.
+### Step 3 — generate
 
-> Thirty-nine weeks. Tabs by phase, weeks inside them. And the strength sessions are placed *around* the running, not beside it — the scheduler knows which days are hard.
+**Do:** click **Generate plan**. With these inputs there are no warnings, so it goes **straight to the Dashboard** — no intermediate screen. (If a warning does fire, the page stays put, shows it, and offers a `Continue to dashboard` link. That means your race date was too close; that path belongs in section 5, not here.)
 
-**Do:** back to the dashboard. Click **"Log this" on a run row** — not the generic button.
+### Step 4 — the Schedule page
+
+**Do:** click **Schedule** in the nav. The page heading reads `FULL PLAN`. Point at, in order:
+
+1. The **phase tab row** — `Base 15 / Build 13 / Peak 6 / Taper 4`.
+2. The **week list** below it, each row summarised as `Long run 7.7mi · 4 lifts`.
+3. **Expand week 1** (or whichever is marked `CURRENT`) and let the day rows show: two `Run` days, the `Lift` sessions, and the long run on Sunday.
+
+**Say** — read the week count off the screen rather than reciting a number:
+
+> Thirty-eight weeks. Tabs by phase, weeks inside them. And the strength sessions are placed *around* the running, not beside it — the scheduler knows which days are hard.
+
+**Note —** no row here has a "Log this" action, and that's deliberate: this view is read-only. Don't draw attention to it; section 7 is where that matters.
+
+### Step 5 — log a run from its row
+
+**Do:** click **Dashboard**, then find the **first `Run` row** in `THIS WEEK'S PLAN` (Monday) and click its **`Log this`** link on the right-hand end of that row. Do **not** use the blue `Log a session` button at the bottom of the page — that's the generic path and it's the wrong one for this story.
+
+**Do:** on the `LOG A SESSION` form that opens, point out before typing anything:
+- `TYPE` is already set to `Run`
+- `DURATION (MINUTES)` is already filled with the planned figure (`30`)
+- `DISTANCE (MILES, OPTIONAL)` is empty
+
+**Do:** fill in `RPE (1-10)` if it isn't already at `5`, then click **Log session**. You land back on the Dashboard and the session appears under `LOGGED THIS WEEK`.
 
 > I'll log Monday's run from the row itself. Type and duration arrive prefilled, because the plan already said what it wanted.
 >
@@ -145,15 +233,29 @@ bun run check
 
 ## 5. A warning, fired on purpose — 1:00
 
-**On screen:** intake with **4 running days / 1 bike day / "Follow a program"**, then the warning.
+**Record this section last.** It creates another plan.
+
+**Do:** click **Goal** again. Set these three, leaving everything else:
+
+| Field | Value |
+|---|---|
+| `RACE DATE` | Same 9–12 months out |
+| `CURRENT WEEKLY MILEAGE` | `20` |
+| `CURRENT RUNNING DAYS PER WEEK` | **`4`** |
+| `STRENGTH TRAINING` | **`Follow a program`** |
+| `BIKE DAYS PER WEEK` | **`1`** |
+
+**Note —** selecting `Follow a program` hides the `LIFT DAYS PER WEEK` field, since the program dictates its own session count. That's expected, not a glitch.
 
 **Say:**
 
 > Here's a plan built to fail. Four running days, a bike day, and the full strength program.
 
-**Do:** generate. Let the warning render.
+**Do:** click **Generate plan**. Because this configuration warns, the page **stays on the goal form** and renders the warning in an amber panel just above the button, with a `Continue to dashboard` link. Let it sit on screen while you talk. Don't click through yet.
 
-> There it is. It's telling me the schedule can't fit what it promised. Thirty-nine weeks out of thirty-nine come up short on sessions, and two lower-body days land back to back in thirty-three of them.
+**Note —** read the two numbers **off the banner**, don't recite them. It says "N of N weeks get fewer sessions than planned" and names Lower A / Lower B landing back-to-back in a second count. The totals move with the plan length, which is computed from today's date.
+
+> There it is. It's telling me the schedule can't fit what it promised. Every week of the plan comes up short on sessions, and two lower-body days land back to back in most of them.
 >
 > Two things. It reports proportionally, and there's no threshold — a single bad week still gets named. And it exists because the old behaviour was to silently drop the session instead.
 
@@ -169,7 +271,12 @@ bun run check
 
 ## 6. One architecture claim, tested by accident — 1:15
 
-**On screen:** the three pure packages, or the program data file next to the scheduler.
+**On screen:** the editor, two files side by side. This is the only code-reading section, so make the split obvious.
+
+- **Left:** `packages/strength-engine/src/programs/glute-gladiator.ts`, scrolled to the `sessions:` array (line 27). You want `name: "LOWER_A"`, `displayName`, `respectsInterference`, `spacingGroup`, and the `exercises` list with real movement names and coaching notes on screen. This is the *data*.
+- **Right:** `packages/scheduling/src/place.ts`, at `export function placeSlots` (line 24). This is the *code* — and nothing in it mentions Glute Gladiator, lifting, or running.
+
+**Note —** the point lands visually before you say it: one file is full of domain content, the other has none. If you'd rather show one thing, show `place.ts` and say what isn't in it.
 
 **Say:**
 
@@ -187,7 +294,13 @@ bun run check
 
 ## 7. What all of that still missed — 1:15
 
-**On screen:** the dashboard's current week. Point at a run row.
+**On screen:** the **Dashboard**, scrolled so the whole `THIS WEEK'S PLAN` table is in frame. You want all seven rows visible at once, because the argument is about which rows have the action and which don't.
+
+**Do:** as you say "that button did not exist for runs", **point along the right-hand column** — `Log this` on Monday's Run, Tuesday's Run, the four Lift rows, and Sunday's long run. The claim is that until the last checkpoint only the Lift rows had it, so it helps to trace the whole column rather than gesture at one row.
+
+**Note —** don't try to demonstrate the bug live. The fix is merged; the old behaviour doesn't exist to show. You're narrating over the fixed state, which is honest as long as you say "did not exist" in the past tense, as the script does.
+
+**Optional, if you want the receipt on screen:** have `e2e/log-from-plan-row.spec.ts` open in a second tab and cut to it on the "there's a ninety-first test now" line. The file's opening comment is the whole story in a paragraph.
 
 **Say:**
 
@@ -219,7 +332,9 @@ bun run check
 
 ## 8. Close — 0:30
 
-**On screen:** back to the dashboard, or `DECISIONS.md`.
+**On screen:** open `DECISIONS.md` and scroll slowly through it while you talk — not to any particular entry, just enough that the viewer registers its length and that every section is headed by a checkpoint. The file is the evidence for the closing claim, so it should be what's on screen when you make it.
+
+**Do:** end on the **Dashboard** for the last line, so the video closes on the product rather than on a text file.
 
 **Say:**
 
