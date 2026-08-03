@@ -1,6 +1,11 @@
 # Cadenza — walkthrough script
 
-Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7:30 at a brisk pace, 8:30 if you take your time.** Pace is the main lever — at a normal technical delivery of roughly 160 words a minute it lands just under 8:00. One further *optional cut* remains marked in section 7 (worth ~15 seconds) if you'd rather have the margin. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
+Target **5–8 minutes**. The script is **~1,330 spoken words — 7:50 brisk, 8:50 if you take your time.** Adding the rubric paragraph to section 0 used up the slack, so:
+
+- **Take the marked cut in section 7** (45 words, ~17 seconds). That brings it to ~1,285 — **7:30 brisk, 8:30 measured.**
+- **Pace is now the real lever.** At 170 words a minute you're comfortably inside; at 150 you're over. Read the long paragraphs briskly — especially section 0's rubric list, which is meant to sound like something you're getting out of the way.
+
+Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
 
 **The through-line:** stated in section 0, closed in section 8 — *everything here is checkable, and the places where the system proved me wrong are in the record.* Sections 5, 7 and 8 are the evidence. Without that spine this is a competent tour; with it, it's an argument.
 
@@ -46,17 +51,19 @@ If you re-take anything from the first group afterwards, **reseed again first.**
 
 ---
 
-## 0. Open — 0:30
+## 0. Open — 0:50
 
 **On screen:** the **Dashboard** page, signed in as the demo account, scrolled to the top so the header block and the phase arc are both visible — `WEEK 9 OF 38` / `BASE PHASE` on the left, `RACE DAY 2/27/2027` on the right, the arc below. Don't scroll, don't click.
+
+**Note —** the middle paragraph is the rubric, delivered fast and flatly. It works *because* it sets up the turn that follows it: the checklist is table stakes, and saying so out loud is what earns the "but" in the third paragraph. Deliver it as a list you're getting out of the way, not as a boast — the moment it sounds like selling, it reads as defensive.
 
 **Say:**
 
 > This is Cadenza — a marathon training app for a first-time marathoner who's also a serious lifter and rides most weeks.
 >
-> The brief asked for an authenticated app where you can record a session, and said it needn't be feature-complete. I built past that deliberately.
+> Quickly, against what was asked for. Monorepo on the named stack, deployed to Railway as three separate services — database, backend, frontend. Verification runs locally and in CI. Auth is Clerk. The client update — diagram, write-up, this video — is in the repo, which is public, alongside a live URL. It asked for an authenticated UI where you can record a session, and said it needn't be feature-complete; I built past that deliberately. The one thing I skipped is the optional Terraform bonus.
 >
-> But the part worth your time isn't the feature list. It's the number of times this system caught something I'd got wrong — and the fact that all of it is written down.
+> But the part worth your time isn't the checklist. It's the number of times this system caught something I'd got wrong — and the fact that all of it is written down.
 
 ---
 
@@ -324,7 +331,7 @@ bun run check
 
 > It took a person clicking the thing. No test was going to find it, because the fixture that made the tests realistic was the same fixture hiding the bug.
 
-**Fast, as evidence it wasn't a one-off.** *(First optional cut if you're running long — the section still lands without it.)*
+**Fast, as evidence it wasn't a one-off.** ⚠️ ***Cut this if you need the time.*** Since the rubric paragraph went into section 0, this is the budget's only remaining slack — dropping it is what keeps the video under eight minutes at a measured pace. The section lands fine without it.
 
 > Two others. A strength session silently vanishing from weeks thirty-one to thirty-six, visible only by reading a full plan end to end. And four hundred and fifty orphaned session logs — the coach reporting eighty-mile weeks on a plan whose longest run is under ten.
 
