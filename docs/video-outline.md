@@ -1,8 +1,14 @@
 # Cadenza — walkthrough script
 
-Target **5–8 minutes**. The script below is **~1,295 spoken words**: roughly **7:40 at a brisk pace, 8:40 if you take your time** — so it now runs slightly long, and section 8 timings sum to 8:00 before the section 7 addition. **Take at least one of the two passages marked *optional cut*** (about 40 seconds together) to land inside the target. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
+Target **5–8 minutes**. The script below is **~1,270 spoken words**: about **7:30 at a brisk pace, 8:30 if you take your time.** Pace is the main lever — at a normal technical delivery of roughly 160 words a minute it lands just under 8:00. One further *optional cut* remains marked in section 7 (worth ~15 seconds) if you'd rather have the margin. Every factual claim here is checkable against [WRITEUP.md](./WRITEUP.md) and [DECISIONS.md](../DECISIONS.md).
 
 **The through-line:** stated in section 0, closed in section 8 — *everything here is checkable, and the places where the system proved me wrong are in the record.* Sections 5, 7 and 8 are the evidence. Without that spine this is a competent tour; with it, it's an argument.
+
+## How to read this
+
+- **Everything in a `>` blockquote is spoken aloud, and nothing else is.** If it isn't quoted, don't say it.
+- **On screen / Do** — what to show and what to click.
+- **Note —** direction for you, never spoken.
 
 ## Recording notes
 
@@ -85,33 +91,55 @@ Move briskly. This is the least distinctive part of the video and it's setting u
 >
 > Remember this click.
 
-**Do:** trigger the coach if a key is configured. *(Second optional cut — section 7 explains what the coach does anyway.)*
-
-> And that's the coach. It comments on how the last couple of weeks actually went. It is not what makes the schedule safe.
+**Note —** the AI Coach beat that used to sit here has been cut, to bring the runtime back inside eight minutes. Section 7 explains what the coach does at the point where it actually matters, so nothing is lost. Don't click "Ask the coach" on camera in this section.
 
 ---
 
 ## 4. What's supposed to catch things — 0:40
 
-**On screen:** terminal, then a merged PR's checks.
+This is two shots: a terminal, then a browser. Set both up before you roll.
 
-**Do:** start `bun run check` for real. Cut the wait.
+### Before recording
 
-**Say:**
+1. **Terminal** — open at the repo root, window large enough that the whole `check` output fits without scrolling. Clear it (`Cmd+K`) so the command is the first thing on screen.
+2. **Browser tab** — open this exact page, which is the CI run for the last merged PR:
+   **https://github.com/lizorsini54/firstloop-marathon-app/actions/runs/30833595282**
+   It shows a left sidebar headed **All jobs** listing `check`, `integration` and `e2e`, each with a green tick, plus **Status: Success** and **Total duration: 1m 39s** in the panel on the right. Everything you need is in one frame — nothing to expand or click.
+   *For a different run later: repo → **Actions** tab → click the top run in the list.*
+
+### Shot 1 — the terminal
+
+**Do:** type and run:
+
+```
+bun run check
+```
+
+**Do:** let it actually run, then **cut the wait in the edit** — it takes 30–60 seconds. Cut from the moment you press Enter to the final `77 pass / 0 fail`.
+
+**Say** (over the command starting, and the result landing):
 
 > Before I show you what this got wrong, here's what's meant to catch it.
 >
 > One command locally — TypeScript, ESLint, Knip for dead code, and the unit tests. That's the pre-commit gate.
 
-**Do:** cut to the PR checks.
+### Shot 2 — CI
+
+**Do:** cut to the browser tab. Point at the three job names in the left sidebar as you name them.
+
+**Say:**
 
 > And in CI, three required checks on every pull request. That same command, an integration suite against a real Postgres in a container, and Playwright against the whole stack. All three have to pass to merge.
 >
 > Every checkpoint in this project went in through that. Ninety-one tests, all green.
 
-> **Don't oversell this.** Two sections from now is about what it all missed, and that only works if you were straight here.
+### Notes to yourself — not spoken
 
-> **Counts, as of this recording:** 77 unit (`bun run test`), 10 integration (Testcontainers), 4 Playwright — **91 total**. Re-run the three suites and re-count before you record if you've touched anything since; section 7 quotes these numbers back.
+**Don't oversell this.** Two sections from now is about what it all missed, and that only works if you were straight here. Resist adding "and it's all thoroughly tested" — section 7 is about to prove it wasn't.
+
+**Counts, as of this recording:** 77 unit (`bun run test`), 10 integration (`bun run test:integration`, Testcontainers), 4 Playwright (`bun run test:e2e`) — **91 total**. Section 7 quotes these back, so if you touch anything before recording, re-run all three and re-count.
+
+**Why the split is worth one sentence if you have room:** Testcontainers needs Docker and Playwright needs the whole stack running, so neither belongs in the fast local loop — but both are still required before anything merges.
 
 ---
 
