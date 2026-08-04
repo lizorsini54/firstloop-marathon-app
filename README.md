@@ -171,6 +171,22 @@ bun run test:e2e           # Playwright against the running stack
 
 Both are still required checks in CI. All three jobs must pass to merge into `main`.
 
+### Running e2e against a deployed environment
+
+The specs sign in as the seeded demo account, and each one calls `createPlan`. Since the app resolves "most recent plan wins," a run leaves that environment's demo dashboard showing a plan generated that day with no history behind it — fine against localhost, destructive against anything you intend to demo.
+
+`e2e/test-identity.ts` enforces this rather than leaving it to memory: a non-local `baseURL` refuses to run unless `E2E_CLERK_EMAIL` names a separate Clerk test user. Any address carrying the `+clerk_test` subaddress is a test identity on a development instance, but **the user has to exist in Clerk before it can be signed in as** — creating it is a one-time manual step in the Clerk dashboard.
+
+```bash
+E2E_CLERK_EMAIL="firstloop_e2e+clerk_test@example.com" bun run test:e2e
+```
+
+If the demo data does get buried, reseeding restores it — pointing `DATABASE_URL` at the target database, since the script otherwise reads the local one from `.env`:
+
+```bash
+DATABASE_URL="<target database URL>" bun run --filter '@firstloop/db' db:seed
+```
+
 ## Deploy (Railway)
 
 Three services, deployed from this repo with **Root Directory** left at `/` for both app services (build/start commands use Bun workspace filters from the repo root):

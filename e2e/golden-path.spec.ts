@@ -1,7 +1,8 @@
 import { clerk } from "@clerk/testing/playwright";
 import { expect, test } from "@playwright/test";
 
-const TEST_EMAIL = "firstloop_test+clerk_test@example.com";
+import { TEST_EMAIL } from "./test-identity";
+
 // A duration unlikely to collide with any other logged session, so the
 // dashboard assertion below (which only renders date/type/duration/RPE,
 // not notes) can look for an unambiguous, run-specific value.

@@ -1,7 +1,7 @@
 import { clerk } from "@clerk/testing/playwright";
 import { expect, test } from "@playwright/test";
 
-const TEST_EMAIL = "firstloop_test+clerk_test@example.com";
+import { TEST_EMAIL } from "./test-identity";
 
 test("fueling reference renders its guidance tiers", async ({ page }) => {
   await page.goto("/");
