@@ -1,6 +1,8 @@
 import { clerk } from "@clerk/testing/playwright";
 import { expect, test } from "@playwright/test";
 
+import { TEST_EMAIL } from "./test-identity";
+
 /**
  * Regression test for the Checkpoint 17 bug.
  *
@@ -24,8 +26,6 @@ import { expect, test } from "@playwright/test";
  * persisted foreign key itself is not asserted here; that would need database
  * access Playwright doesn't have.
  */
-
-const TEST_EMAIL = "firstloop_test+clerk_test@example.com";
 
 test("a planned run can be logged from its own row on the dashboard", async ({ page }) => {
   await page.goto("/");
