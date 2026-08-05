@@ -1,8 +1,8 @@
 # Checkpoint roadmap
 
-Ordered plan for the work coming out of the two August 2026 persona reviews — [the first](./reviews/2026-08-persona-review.md) and [the second](./reviews/2026-08-persona-review-2.md). Checkpoints 19–24 are done; everything below them is sequenced but not started.
+Ordered plan for the work coming out of the two August 2026 persona reviews — [the first](./reviews/2026-08-persona-review.md) and [the second](./reviews/2026-08-persona-review-2.md). Checkpoints 18–27 are done; everything below them is sequenced but not started.
 
-This is a plan, not a contract. The order reflects dependencies and blast radius, and it is expected to be re-judged when a checkpoint finishes — the review that produced it exists precisely because plans stop matching reality.
+This is a plan, not a contract. The order reflects dependencies and blast radius, and it is expected to be re-judged when a checkpoint finishes — the reviews that produced it exist precisely because plans stop matching reality. This file was itself two checkpoints out of date before this refresh, which is the failure mode it should be checked against.
 
 ## Ground rules these checkpoints run under
 
@@ -12,60 +12,81 @@ This is a plan, not a contract. The order reflects dependencies and blast radius
 - `bun run check` plus relevant suites before every commit. Never commit red.
 - Every real decision logged to `DECISIONS.md` as it is made.
 - Diagnose before fixing; verify against the running app, not against what the docs say about it.
+- A guard that has never been seen to fail is not yet a guard — reintroduce the bug and watch the new test catch it.
 
 ## Done
 
 | CP | Work | Outcome |
 |---|---|---|
-| 18 | Step-back persona review | 10 findings, 7 issues filed (#41–#48) |
-| 19 | Coach long-run mileage comparison (#41) | Coach no longer reports an on-plan runner as 60–70% over |
-| 20 | Coach latency bound and a real test timeout (#48) | Request settles within 25s; local e2e trustworthy again |
+| 18 | Step-back persona review | 10 findings, 7 issues (#41–#48) |
+| 19 | Coach long-run mileage comparison (#41) | No longer reports an on-plan runner as 60–70% over |
+| 20 | Coach latency bound and a real test timeout (#48) | Settles within 25s; local e2e trustworthy again |
 | 21 | Numeric selects render zero (#44) | Fixed as a pattern across all three, not just the broken one |
 | 22 | Corrected the strength-logging finding, wrote the spec | #42's original framing was false; the real gap specified |
 | 23 | Log exercises the plan didn't prescribe (#42, #43) | One form, three entry points; Custom mode delivers its caption |
 | 24 | Second step-back persona review | 6 findings, 5 issues (#56–#60) |
+| 25 | A log can't claim a planned workout it doesn't match (#56) | Validated server-side; shared by every write path |
+| 26 | `migration-over-data` CI job + `db:rehearse` | A migration that breaks on real rows now fails the build |
+| 27 | Edit and delete a logged session (#10, session half) | Plan half split out as #64 |
+
+Test coverage across those: 77 → 83 unit, 10 → 19 integration, 4 → 11 e2e, plus a fourth required CI check.
 
 ## Next
 
-### CP25 — Type-switching strands the plan link (#56)
+### CP28 — The quick-win pass (#59, #60, #46, #47)
 
-**Promoted above the display pass.** It is the only open finding that corrupts data rather than confusing a reader: a run logged against a planned lift is neither missed nor completed, so it disappears from adherence entirely.
+Four small, independent fixes. Grouped as one checkpoint because each is a single change and the backlog is currently growing faster than it shrinks — the reviews added 13 issues and only 6 have closed.
 
-The fix is a product decision — refuse the switch when the log came from a plan row, drop `plannedWorkoutId` when the type stops matching, or warn and proceed — so it wants its own checkpoint rather than a patch.
+- **#59** — `"1 exercises logged"`. One word. Reachable only since CP23 let a user log a single exercise.
+- **#60** — the coach's `no_plan` state can't happen: the dashboard redirects to `/intake` whenever `plan` is null. Remove it, or document in the schema why it stays.
+- **#46** — the current week plots as `0` while the tile above reads "the week's still open". CP16 made *future* weeks null for exactly this reason; the in-progress week was missed.
+- **#47** — "Peak" names both a running phase and a Glute Gladiator block, with no signal they're separate vocabularies.
 
-### CP26 — Display honesty pass (#46, #47)
+Split if it runs long, but expect one session. #45 is deliberately **not** here — see below.
 
-Both are cases of the app saying two things about one fact on a single screen:
+### CP29 — Post-generate navigation (#45)
 
-- The current week plots as `0` on the chart while the tile above reads "the week's still open." Checkpoint 16 made *future* weeks null for exactly this reason; the in-progress week was missed.
-- "Peak" names both a running phase and a Glute Gladiator strength block, with no signal that these are separate vocabularies.
+After generating with warnings the app stays on the intake form, and the most prominent control is a full-width blue "Generate plan" button while the actual next step is a text link nested inside a warning box. Also worth separating the two jobs that box does: reporting a warning, and offering navigation.
 
-Grouped because they are one theme and each is small. If they turn out to be more than a session's work, split them.
+Its own checkpoint rather than part of CP28 because it changes a flow rather than a string, and the warning box wants redesigning rather than tweaking.
 
-### CP27 — Post-generate navigation (#45)
+### CP30 — Plan management (#15, #64) — the big one
 
-After generating with warnings the app stays on the intake form, and the most prominent control is a full-width blue "Generate plan" button while the actual next step is a text link nested inside a warning box. Also worth separating the two jobs that box is doing: reporting a warning, and offering navigation.
+**Do these together.** Whatever surface lets you choose among plans is where you'd archive or delete one; building them apart risks two plan-management screens.
 
-### CP28 — Cutback weeks and peak long-run scaling
+- **#15** multi-plan selection. Today it's most-recent-wins with no UI. Likely needs a column, which makes this **the first real exercise of CP26's migration guard**.
+- **#64** delete or archive a plan. Needs a decision first: `SessionLog.plannedWorkoutId` is `onDelete: SetNull` by CP14's deliberate choice, so deleting a plan silently unlinks its history and makes that period's adherence unrecoverable. Defensible, but it should be chosen rather than inherited. Archive may beat delete for a completed training block, where hard delete was right for a mistyped log.
 
-**Spec first — `plan-engine`.** The two engine-level deferrals from Checkpoint 13, re-verified as still open during the review:
+**#10 closes when #64 does.**
+
+Expect a spec-shaped checkpoint before implementation, as CP22 was for strength logging.
+
+### CP31 — Log-form follow-ups (#57, #58)
+
+Both touch the exercise card CP23 built, and both are better judged once CP30 has settled the surrounding surfaces.
+
+- **#57** — "Remove" on a prescribed exercise doesn't say what it means, and there's no way to record *"I did the session but skipped the split squats."* Copy is the cheap half; whether skipping should be recordable is a real product question. Folds in the note-only finding that an added exercise isn't labelled as yours.
+- **#58** — Duration is the only required field, isn't prefilled for lifts (the plan prescribes them by content, not time), and sits below roughly twenty optional inputs.
+
+### CP32 — Cutback weeks and peak long-run scaling
+
+**Spec first — `plan-engine`.** The two engine-level deferrals from Checkpoint 13, re-verified as still open at Checkpoint 24 by calling `generatePlan` directly:
 
 - Zero week-over-week long-run reductions in the first 14 weeks, for both a novice at 8 mi/week and an experienced runner at 40 mi/week.
 - Peak long-run distance is **19 mi for both profiles**. For the 40 mi/week runner the entire 43-week plan moves the long run from 14 mi to 19 mi.
 
-Overlaps #9 ("refine periodization heuristics"), which should be closed or explicitly re-scoped when this lands rather than left as a permanent open ticket.
+**#9** ("refine plan-engine periodization heuristics") is these two in concrete form. Close it with a pointer when this lands rather than tracking the same work twice.
 
-## Before the schema-touching work
+## Resolved: the schema-safety question
 
-**#10** (edit/delete) and **#15** (multi-plan selection) both need migrations. Migrations currently run at server *start* against the only database that exists, and CI only ever proves a migration applies to an **empty** database — the e2e job runs `db:deploy` against a fresh Postgres.
+Checkpoint 26 closed this. `migration-over-data` proves on every pull request that a migration applies to a database already holding rows — demonstrated with a `NOT NULL` column that passes on an empty database and fails with `23502` on a populated one. `db:rehearse` covers the question a synthetic fixture can't: whether a migration survives *real* data, by dumping a source database and migrating the copy.
 
-Nothing proves a migration applies cleanly to a database that already holds rows. Close that before attempting either issue: rehearse the migration against a restored production dump. That costs nothing and does not require a second environment.
-
-The separate question — whether to pay for a Railway pre-prod environment now that this is ongoing work rather than a bounded submission — is worth its own evaluation, but the thing it uniquely buys is a shareable staging URL for someone else to test against. That need does not exist yet.
+That also settles the Railway pre-prod question **for now**. The specific thing a second environment would have bought is covered. What remains is a shareable staging URL for someone else to test against — not a need that exists yet. Revisit if it appears.
 
 ## Standing items
 
-- **Next step-back review:** last run at Checkpoint 24. Due again after roughly four more checkpoints, or sooner if a flow gets substantially rebuilt — Checkpoint 23 rebuilding the log form is exactly the trigger that pulled the last one forward.
-- **Backlog hygiene:** the review added 8 issues to a list of 4. That is healthy for one pass, but if successive checkpoints keep adding without closing, the log stops being a plan. #9 is the first candidate for closing or re-scoping.
-- **Not tracked as an issue, noted in the review:** a user with no plan is redirected from `/dashboard` to `/intake` with no explanation. Worth one line of copy whenever the intake page is next touched.
-- **Manual, outside the code:** create the dedicated Clerk test user (`firstloop_e2e+clerk_test@example.com`) so e2e can run against a deployed environment without burying the seeded demo. Until it exists, `E2E_CLERK_EMAIL` is unset and non-local runs refuse outright, which is the safe failure.
+- **Next step-back review:** last run at Checkpoint 24. Due again after roughly four more checkpoints — so around CP30's plan-management work, or sooner if a flow gets substantially rebuilt. CP23 rebuilding the log form is exactly the trigger that pulled the last one forward.
+- **Backlog hygiene:** two reviews added 13 issues; 6 have closed. #9 closes with CP32. **#13** (loading skeletons, minimal form error handling) is the oldest untouched issue and has never been prioritised in any checkpoint — it deserves a deliberate keep-or-close decision rather than indefinite drift.
+- **Not tracked as an issue, noted in the first review:** a user with no plan is redirected from `/dashboard` to `/intake` with no explanation. Worth one line of copy whenever the intake page is next touched.
+- **Making `migration-over-data` required:** done. It is now one of four required checks, added after its first green run.
+- **The dedicated Clerk e2e user** (`firstloop_e2e+clerk_test@example.com`) exists and is verified working. Set `E2E_CLERK_EMAIL` to it when running e2e against a deployed environment; without it, non-local runs refuse outright rather than burying the seeded demo.
