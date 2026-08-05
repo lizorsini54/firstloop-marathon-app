@@ -83,3 +83,69 @@ jobs:
       - run: bun run test:e2e
         env:
           CI: true
+
+  # Proves a migration applies to a database that already holds rows. The e2e
+  # job above only ever migrates an empty one, which passes for exactly the
+  # migrations that break in production: a NOT NULL column with no default, a
+  # unique constraint existing rows violate, a narrowed type. Migrations run at
+  # server *start* here, so that failure would surface as a boot failure in
+  # production rather than as a red build.
+  migration-over-data:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: firstloop
+          POSTGRES_PASSWORD: firstloop
+          POSTGRES_DB: firstloop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://firstloop:firstloop@localhost:5432/firstloop
+    steps:
+      # Full history: the base branch's migrations have to be checkout-able.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Migrate to the base branch's schema
+        run: |
+          git fetch origin ${{ github.base_ref || 'main' }} --depth=1
+          git checkout FETCH_HEAD -- packages/db/prisma/migrations
+          bun run --filter '@firstloop/db' db:deploy
+
+      - name: Insert fixture data at the base schema
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/scripts/migration-fixture.sql
+
+      # The assertion. Restore this branch's migrations and apply them on top of
+      # a populated database. A no-op when the branch adds none, which is the
+      # correct outcome rather than a gap.
+      - name: Apply this branch's migrations over that data
+        run: |
+          git checkout HEAD -- packages/db/prisma/migrations
+          bun run --filter '@firstloop/db' db:deploy
+
+      - name: Confirm the fixture survived
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -t -c "
+            SELECT CASE
+              WHEN (SELECT count(*) FROM \"User\" WHERE id = 'mig_user') = 1
+               AND (SELECT count(*) FROM \"TrainingPlan\" WHERE id = 'mig_plan') = 1
+               AND (SELECT count(*) FROM \"PlannedWorkout\" WHERE \"planId\" = 'mig_plan') = 2
+               AND (SELECT count(*) FROM \"SessionLog\" WHERE \"userId\" = 'mig_user') = 2
+               AND (SELECT \"plannedWorkoutId\" FROM \"SessionLog\" WHERE id = 'mig_log_linked') = 'mig_workout_run'
+              THEN 'fixture intact'
+              ELSE (SELECT 1/0)::text
+            END;"
