@@ -1,5 +1,6 @@
 import { prisma } from "@firstloop/db";
 import type { Prisma } from "@firstloop/db";
+import { ORPCError } from "@orpc/server";
 import {
   checkFeasibility,
   computePhaseBoundaries,
@@ -251,6 +252,36 @@ const logSession = protectedProcedure
   .handler(async ({ input, context }) => {
     const user = await getOrCreateUser(context.auth.userId);
 
+    // A link to a planned workout is a claim that *this* session is the one the
+    // plan asked for, and adherence is computed entirely from it — so it gets
+    // validated here rather than trusted from the client.
+    //
+    // The two failure modes are handled differently on purpose. A workout that
+    // isn't the caller's has no correct interpretation, so it's rejected. A
+    // type mismatch does have one: the runner did something other than what was
+    // planned, which is a standalone session, and the planned one stays
+    // legitimately unlogged. Rejecting that would lose a real entry over a
+    // recoverable mismatch. Warned rather than swallowed, so a client that
+    // starts sending mismatches is visible instead of absorbed.
+    let plannedWorkoutId = input.plannedWorkoutId;
+    if (plannedWorkoutId !== undefined) {
+      const planned = await prisma.plannedWorkout.findUnique({
+        where: { id: plannedWorkoutId },
+        select: { type: true, plan: { select: { userId: true } } },
+      });
+
+      if (!planned || planned.plan.userId !== user.id) {
+        throw new ORPCError("NOT_FOUND", { message: "Planned workout not found" });
+      }
+
+      if (planned.type !== input.type) {
+        console.warn(
+          `Dropping plannedWorkoutId ${plannedWorkoutId}: logged ${input.type} against a planned ${planned.type}`,
+        );
+        plannedWorkoutId = undefined;
+      }
+    }
+
     const created = await prisma.sessionLog.create({
       data: {
         userId: user.id,
@@ -260,7 +291,7 @@ const logSession = protectedProcedure
         durationMin: input.durationMin,
         rpe: input.rpe,
         notes: input.notes,
-        plannedWorkoutId: input.plannedWorkoutId,
+        plannedWorkoutId,
         setLog: input.setLog,
       },
     });

@@ -131,3 +131,36 @@ test("a lift with no exercises at all still saves", async ({ page }) => {
   await page.getByRole("button", { name: "Log session" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 });
+
+/**
+ * Checkpoint 25 (#56). Switching Type away from what the row prescribed used to
+ * keep the link, so a run could mark a planned lift complete — and because
+ * adherence reads the link without checking type, that session became neither
+ * missed nor completed. The link now holds only while the types agree, and the
+ * runner is told rather than silently detached.
+ */
+test("switching type away from the planned one detaches the session, and says so", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await signIn(page);
+  await page.goto("/dashboard");
+
+  const liftRow = page
+    .locator("li")
+    .filter({ has: page.locator("span", { hasText: /^Lift$/ }) })
+    .first();
+  await liftRow.getByRole("button", { name: "Log this" }).click();
+  await expect(page).toHaveURL(/\/log/);
+
+  // No note while the type still matches the row that was opened.
+  await expect(page.getByText(/no longer matches/i)).toHaveCount(0);
+
+  await pick(page, "type", "Run");
+  await expect(page.getByText(/no longer matches/i)).toBeVisible();
+
+  // Switching back re-attaches it — the note is a statement of current state,
+  // not a one-way door.
+  await pick(page, "type", "Lift");
+  await expect(page.getByText(/no longer matches/i)).toHaveCount(0);
+});
