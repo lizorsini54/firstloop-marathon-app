@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildTrainingSnapshot,
+  CoachTimeoutError,
   createAnthropicCompletion,
   getCoachFeedback,
   renderSnapshot,
@@ -269,6 +270,41 @@ describe("getCoachFeedback", () => {
       Promise.resolve(JSON.stringify({ guidance: "Nothing to flag.", concern: null }));
 
     expect((await getCoachFeedback(snapshot, complete)).concern).toBeNull();
+  });
+
+  // Checkpoint 20 (#48). Exercised through the CoachCompletion seam with a
+  // mocked slow response — deterministic, no network, no key. The e2e suite
+  // cannot cover this: with no ANTHROPIC_API_KEY in CI the coach short-circuits
+  // instantly, and with one the timing is exactly the thing that varies.
+  test("gives up with a CoachTimeoutError when the model never answers", () => {
+    const complete: CoachCompletion = () => new Promise<string>(() => {
+      // never resolves
+    });
+
+    expect(getCoachFeedback(snapshot, complete, { timeoutMs: 10 })).rejects.toThrow(
+      CoachTimeoutError,
+    );
+  });
+
+  test("does not time out a response that arrives inside the bound", async () => {
+    const complete: CoachCompletion = () =>
+      new Promise<string>((resolve) => {
+        setTimeout(() => {
+          resolve(JSON.stringify({ guidance: "Steady block.", concern: null }));
+        }, 5);
+      });
+
+    const feedback = await getCoachFeedback(snapshot, complete, { timeoutMs: 500 });
+
+    expect(feedback.guidance).toBe("Steady block.");
+  });
+
+  test("surfaces a genuine failure as itself, not as a timeout", () => {
+    const complete: CoachCompletion = () => Promise.reject(new Error("401 invalid api key"));
+
+    expect(getCoachFeedback(snapshot, complete, { timeoutMs: 500 })).rejects.toThrow(
+      "401 invalid api key",
+    );
   });
 
   test("rejects a response that does not match the expected shape", () => {

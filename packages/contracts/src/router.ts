@@ -19,6 +19,7 @@ import type { GeneratedStrengthWorkout, StrengthProgram, WeekContext } from "@fi
 import { z } from "zod";
 import {
   buildTrainingSnapshot,
+  CoachTimeoutError,
   createAnthropicCompletion,
   getCoachFeedback as requestCoachFeedback,
 } from "./lib/coach";
@@ -582,6 +583,13 @@ const getCoachFeedback = protectedProcedure
       const feedback = await requestCoachFeedback(snapshot, complete);
       return { status: "ok", guidance: feedback.guidance, concern: feedback.concern };
     } catch (error) {
+      // A slow coach is not a broken one. Reported separately so the card can
+      // say "try again" instead of sending the reader to a server log that has
+      // no cause in it.
+      if (error instanceof CoachTimeoutError) {
+        console.warn("Coach feedback timed out:", error.message);
+        return { status: "timed_out", guidance: null, concern: null };
+      }
       // A coach outage must not take the dashboard down with it — the card
       // renders its failed state and everything else still works. Distinct
       // from "unavailable": a key *is* configured, so the fix isn't config.

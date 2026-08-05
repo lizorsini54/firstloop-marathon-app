@@ -92,6 +92,15 @@ function CoachBody({ state }: { state: CoachState }) {
     );
   }
 
+  if (state.data.status === "timed_out") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        The coach took too long to answer and the request was given up on. Nothing's broken — asking
+        again usually works.
+      </p>
+    );
+  }
+
   if (state.data.status === "no_plan") {
     return (
       <p className="text-sm text-muted-foreground">
