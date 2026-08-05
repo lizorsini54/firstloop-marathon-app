@@ -132,6 +132,14 @@ export function LogSession() {
   const isLift = type === "LIFT";
   const showsDistance = type === "RUN" || type === "BIKE";
 
+  // The link is a claim that this session is the one the plan asked for, so it
+  // only holds while the type still matches the row that was clicked. Switching
+  // away detaches it: the session is logged on its own and the planned one
+  // stays legitimately unlogged. The server enforces the same rule — this is
+  // here so the runner is told, not so the rule is applied.
+  const linkHolds = arrivedFromPlan && type === navState?.type;
+  const linkLapsed = arrivedFromPlan && !linkHolds;
+
   // Leaving LIFT drops any exercise rows rather than keeping them alive
   // off-screen, so a run log can't carry a stray setLog it never showed.
   function changeType(next: WorkoutType) {
@@ -198,7 +206,7 @@ export function LogSession() {
       durationMin: Number(durationMin),
       rpe: Number(rpe),
       notes: notes.trim() || undefined,
-      plannedWorkoutId: navState?.plannedWorkoutId,
+      plannedWorkoutId: linkHolds ? navState?.plannedWorkoutId : undefined,
       setLog: setLog && setLog.length > 0 ? setLog : undefined,
     });
 
@@ -286,6 +294,14 @@ export function LogSession() {
                 </SelectContent>
               </Select>
             </div>
+
+            {linkLapsed && (
+              <p className="text-xs text-muted-foreground">
+                This no longer matches{" "}
+                {navState?.prescription?.displayName ?? "the session you opened"}, so it'll be
+                logged on its own — that planned session will still show as not done.
+              </p>
+            )}
 
             {showsDistance && (
               <div className="flex flex-col gap-1.5">

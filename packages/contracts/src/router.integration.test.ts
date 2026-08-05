@@ -162,6 +162,99 @@ describe("createPlan -> logSession", () => {
   });
 });
 
+/**
+ * Checkpoint 25 (#56). A link to a planned workout is a claim that this session
+ * is the one the plan asked for, and adherence is computed entirely from it —
+ * `loggedPlanIds` decides what counts as missed without checking the type. So
+ * an unvalidated link let a 3-mile run mark a strength session complete, while
+ * `strengthCompleted` (which does check type) still didn't count it. The
+ * session was neither missed nor completed.
+ */
+describe("logSession — the planned-workout link", () => {
+  const clerkId = "clerk_test_link_validation";
+
+  async function planFor(userId: string) {
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 3,
+        strengthMode: "program",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId } } },
+    );
+    const user = await prisma.user.findFirstOrThrow({ where: { clerkId: userId } });
+    return prisma.plannedWorkout.findFirstOrThrow({
+      where: { plan: { userId: user.id }, type: "LIFT" },
+    });
+  }
+
+  test("keeps the link when the logged type matches the planned one", async () => {
+    const lift = await planFor(clerkId);
+
+    const { sessionLogId } = await call(
+      router.logSession,
+      {
+        date: new Date(),
+        type: "LIFT",
+        durationMin: 45,
+        rpe: 6,
+        plannedWorkoutId: lift.id,
+      },
+      { context: { auth: { userId: clerkId } } },
+    );
+
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.plannedWorkoutId).toBe(lift.id);
+  });
+
+  test("drops the link, rather than the entry, when the type doesn't match", async () => {
+    const lift = await planFor("clerk_test_link_mismatch");
+
+    const { sessionLogId } = await call(
+      router.logSession,
+      {
+        date: new Date(),
+        type: "RUN",
+        distanceMiles: 3.1,
+        durationMin: 31,
+        rpe: 5,
+        plannedWorkoutId: lift.id,
+      },
+      { context: { auth: { userId: "clerk_test_link_mismatch" } } },
+    );
+
+    // The run is still recorded — losing a real entry over a recoverable
+    // mismatch would be worse — but it no longer claims the planned lift.
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.type).toBe("RUN");
+    expect(log.distanceMiles).toBe(3.1);
+    expect(log.plannedWorkoutId).toBeNull();
+  });
+
+  test("rejects a planned workout belonging to someone else", async () => {
+    const strangersLift = await planFor("clerk_test_link_owner");
+
+    expect(
+      call(
+        router.logSession,
+        {
+          date: new Date(),
+          type: "LIFT",
+          durationMin: 45,
+          rpe: 6,
+          plannedWorkoutId: strangersLift.id,
+        },
+        { context: { auth: { userId: "clerk_test_link_thief" } } },
+      ),
+    ).rejects.toThrow();
+  });
+});
+
 describe("createPlan strengthMode", () => {
   test("custom mode generates the requested number of unprescribed LIFT sessions", async () => {
     const clerkId = "clerk_test_strength_custom";
