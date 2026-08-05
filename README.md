@@ -6,6 +6,8 @@ Built as a technical work sample. The repository and package names are `firstloo
 
 - **Write-up:** [docs/WRITEUP.md](./docs/WRITEUP.md) — what was built, the tradeoffs, and what is honestly not there
 - **Decisions log:** [DECISIONS.md](./DECISIONS.md) — every real architecture and scope decision, with its reasoning
+- **Roadmap:** [docs/ROADMAP.md](./docs/ROADMAP.md) — the sequenced checkpoint plan, and what has to happen before the schema-touching work
+- **Reviews:** [docs/reviews/](./docs/reviews/) — step-back persona and UX evaluations, with findings and triage
 - **Video outline:** [docs/video-outline.md](./docs/video-outline.md)
 
 Bun workspaces monorepo: Express + Prisma/Postgres backend, Vite/React frontend, Zod + oRPC as the shared typed contract, Clerk for auth.
