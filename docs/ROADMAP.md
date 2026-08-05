@@ -41,23 +41,19 @@ A one-line-ish fix with a real consequence: `SelectItem` renders the raw number 
 
 Include a sweep for any other select that can receive a falsy value. Small, still its own PR.
 
-### CP22 — The strength story: decide, don't build (#42, #43)
+### ~~CP22~~ — Done. Corrected the record, then specified the real gap
 
-**Spec only. No implementation.** This is the one checkpoint deliberately spent not coding.
+Scoped as a spec for #42 and #43 on the premise that per-exercise logging did not exist. **It does**, and has since Checkpoint 9 — the review had tested only the freeform `/log` route and generalised. Corrected in place across the review, its summary table, and Checkpoint 18's decisions entry.
 
-#42 and #43 are coupled: Custom mode is unusable partly *because* per-exercise logging does not exist. Today Custom gives you a bare `Lift session` row with no prescription, no caption explaining what you chose, and no way to record what you actually lifted. Meanwhile `/history` renders seeded lifts as "10 exercises logged" — the app displays detail no user can produce, because only the seed script writes `SessionLog.setLog`.
+The real gap is narrower: **no exercise can be logged unless the plan prescribed it**, which is why Custom mode — prescribing none by design — can never reach structured logging. Specified in [docs/specs/strength-logging.md](./specs/strength-logging.md). No schema change required.
 
-Questions that need answering before any code:
+The three product questions were answered before planning and stand unchanged: Custom keeps its "reserve days, you program them" design, structured logging is the direction, and History's "N exercises logged" stays.
 
-1. Does **Custom** mean "we reserve days, you program them" — honest, cheap, largely copy — or "we generate a real minimal program", which is a genuine `strength-engine` feature?
-2. Does **per-exercise logging** land, and does it write to the existing `setLog` field?
-3. If logging lands, does the seeded "N exercises logged" display stay as-is, or change to match what a user can actually produce?
+### CP23 — Log an exercise the plan didn't prescribe (#42, #43)
 
-Touches `strength-engine` under option (1b), so the spec-before-code rule applies. Implementation follows as CP23–24, scoped by what is decided here.
+Implements the spec. One form serves all three entry points — prescribed exercises prefilled as today, an "add exercise" affordance always available, including for Custom sessions and freeform lift logs. Closes #43's copy half with a caption that says what Custom actually is.
 
-### CP23–24 — Implement the strength decision
-
-Scope depends entirely on CP22. Likely two checkpoints: the logging surface first, then Custom-mode content, since the second is more defensible once the first exists.
+No `strength-engine` change: `custom.ts` stays exercise-free, which the spec confirms is correct rather than a gap.
 
 ### CP25 — Display honesty pass (#46, #47)
 
