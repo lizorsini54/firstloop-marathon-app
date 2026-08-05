@@ -174,6 +174,20 @@ bun run test:e2e           # Playwright against the running stack
 
 Both are still required checks in CI. All three jobs must pass to merge into `main`.
 
+### Migrations against data that already exists
+
+Migrations run at server **start**, so a migration that fails does so at boot in production. The three jobs above only ever migrate an **empty** database — which passes for exactly the migrations that break on a real one: a `NOT NULL` column with no default, a unique constraint existing rows violate, a narrowed type.
+
+A fourth CI job, `migration-over-data`, closes that. On every pull request it migrates to the base branch's schema, inserts a small fixture, then applies the branch's migrations **on top of populated tables**. When a branch adds no migration it's a no-op, which is the right answer rather than a gap.
+
+For the question a synthetic fixture can't answer — *does this survive our actual data* — rehearse against a copy of a real database:
+
+```bash
+SOURCE_DATABASE_URL="<a database URL>" bun run --filter '@firstloop/db' db:rehearse
+```
+
+It dumps the source, restores it into a scratch database, and migrates **the copy**. The source is never modified, and there's deliberately no default source, since a default would eventually mean production. `pg_dump`/`psql` run inside the compose Postgres container, which is also how a remote Railway URL works without a local Postgres client installed.
+
 ### Running e2e against a deployed environment
 
 The specs sign in as the seeded demo account, and each one calls `createPlan`. Since the app resolves "most recent plan wins," a run leaves that environment's demo dashboard showing a plan generated that day with no history behind it — fine against localhost, destructive against anything you intend to demo.

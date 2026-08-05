@@ -11,7 +11,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "db:seed": "bun --env-file=../../.env prisma/seed.ts"
+    "db:seed": "bun --env-file=../../.env prisma/seed.ts",
+    "db:rehearse": "bash scripts/rehearse-migration.sh"
   },
   "dependencies": {
     "@firstloop/plan-engine": "workspace:*",
