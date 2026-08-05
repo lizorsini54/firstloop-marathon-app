@@ -257,6 +257,12 @@ export function Intake() {
                   running mileage.
                 </p>
               )}
+              {strengthMode === "custom" && (
+                <p className="text-xs text-muted-foreground">
+                  We'll reserve the days and keep them clear of your hard runs — you decide what to
+                  lift. Log the exercises and sets you actually did on the day.
+                </p>
+              )}
             </div>
 
             {strengthMode === "custom" && (
