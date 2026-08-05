@@ -23,6 +23,17 @@ const DAY_COUNT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7];
 const RUNNING_DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 const CUSTOM_LIFT_DAY_OPTIONS = [1, 2, 3, 4];
 
+/**
+ * Every numeric `SelectItem` below renders `{String(n)}`, never `{n}` — do not
+ * "simplify" it back. Radix shows the trigger's text by portalling the selected
+ * item's children into the value node, and that portal drops a bare numeric `0`
+ * while rendering `"0"` fine. The option list is unaffected (it renders `{0}`
+ * correctly), so the symptom is a blank *trigger* on a selected zero, which is
+ * how 0 bike days — the seeded demo's own configuration — displayed as nothing.
+ * Only DAY_COUNT_OPTIONS contains a zero today; the other two are one config
+ * change away, so all three use the same form. See DECISIONS.md, Checkpoint 21.
+ */
+
 type StrengthMode = "program" | "custom" | "none";
 type RunningExperience = "first_marathon" | "has_finished_one";
 
@@ -211,7 +222,7 @@ export function Intake() {
                 <SelectContent>
                   {RUNNING_DAY_OPTIONS.map((n) => (
                     <SelectItem key={n} value={String(n)} className="font-mono">
-                      {n}
+                      {String(n)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -260,7 +271,7 @@ export function Intake() {
                   <SelectContent>
                     {CUSTOM_LIFT_DAY_OPTIONS.map((n) => (
                       <SelectItem key={n} value={String(n)} className="font-mono">
-                        {n}
+                        {String(n)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -282,7 +293,7 @@ export function Intake() {
                 <SelectContent>
                   {DAY_COUNT_OPTIONS.map((n) => (
                     <SelectItem key={n} value={String(n)} className="font-mono">
-                      {n}
+                      {String(n)}
                     </SelectItem>
                   ))}
                 </SelectContent>
