@@ -7,6 +7,7 @@ Built as a technical work sample. The repository and package names are `firstloo
 - **Write-up:** [docs/WRITEUP.md](./docs/WRITEUP.md) — what was built, the tradeoffs, and what is honestly not there
 - **Decisions log:** [DECISIONS.md](./DECISIONS.md) — every real architecture and scope decision, with its reasoning
 - **Roadmap:** [docs/ROADMAP.md](./docs/ROADMAP.md) — the sequenced checkpoint plan, and what has to happen before the schema-touching work
+- **Specs:** [docs/specs/](./docs/specs/) — plain-language rules written before implementation, for work that changes how the system decides things
 - **Reviews:** [docs/reviews/](./docs/reviews/) — step-back persona and UX evaluations, with findings and triage
 - **Video outline:** [docs/video-outline.md](./docs/video-outline.md)
 

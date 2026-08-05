@@ -26,7 +26,7 @@ Every number below was read off the screen or measured against local Postgres. N
 |---|---|---|---|
 | 1 | Coach compares total logged vs long-run-only planned mileage | Critical | [#41](https://github.com/lizorsini54/firstloop-marathon-app/issues/41) |
 | 2 | Custom strength mode unexplained and prescribes nothing | High | [#43](https://github.com/lizorsini54/firstloop-marathon-app/issues/43) |
-| 3 | No per-exercise strength logging | High | [#42](https://github.com/lizorsini54/firstloop-marathon-app/issues/42) |
+| 3 | ~~No per-exercise strength logging~~ — **wrong, see correction below**; the real gap is logging an exercise the plan didn't prescribe | High | [#42](https://github.com/lizorsini54/firstloop-marathon-app/issues/42) |
 | 4 | Zero bike days renders blank | Medium | [#44](https://github.com/lizorsini54/firstloop-marathon-app/issues/44) |
 | 5 | Post-generate, the prominent action regenerates | Medium | [#45](https://github.com/lizorsini54/firstloop-marathon-app/issues/45) |
 | 6 | Current week plots as 0 while copy says "still open" | Medium | [#46](https://github.com/lizorsini54/firstloop-marathon-app/issues/46) |
@@ -101,6 +101,24 @@ Two things make this sharper than a plain missing feature:
 Secondary: the form offers "Distance (miles)" for Lift and Rest, where it is meaningless.
 
 **Triage: file as an enhancement.** This is the largest functional gap found.
+
+> **Correction (Checkpoint 22): the finding above is wrong, and the claim that no user can produce that detail is false.**
+>
+> Structured per-exercise logging already exists. Arriving at the log form from a planned LIFT row that carries prescribed exercises gives exercise names, prescribed sets/reps, coaching notes, per-set reps and weight inputs, and an "Add set" control — submitted as `setLog`, accepted by `setLogEntrySchema`, rendered by History. Observed directly:
+>
+> ```
+> Barbell Hip Thrust    4 x 4-6       SET 1  SET 2  SET 3  SET 4   + Add set
+> Barbell RDL           3 x 4-6       SET 1  SET 2  SET 3          + Add set
+> Dumbbell Bulgarian…   3 x 8-10/leg  …
+> ```
+>
+> **How this review got it wrong:** it tested `/log` directly and selected "Lift" from the type dropdown — the freeform path, which has no linked prescription — and generalised from that single route without trying the "Log this" path. The review's own stated method is to use the product; it used one door of two.
+>
+> The real gap is narrower: **there is no way to log an exercise the plan didn't prescribe.** Structured mode is gated on `isStructuredLift`, so it is unavailable for Custom-mode sessions (`exercises: []` by design) and for freeform lift logs. Both confirmed by observation at Checkpoint 22 — 0 set rows in each.
+>
+> The secondary note about "Distance (miles)" showing for Lift and Rest still stands.
+>
+> Left in place rather than rewritten, per the Checkpoint 12 precedent: the finding is the record of what was believed. See `docs/specs/strength-logging.md`.
 
 ### 4. Zero bike days renders as a blank field — MEDIUM, bug
 
