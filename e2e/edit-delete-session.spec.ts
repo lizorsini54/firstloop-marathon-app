@@ -27,13 +27,21 @@ const UNIQUE = 10_000 + (Date.now() % 80_000);
 const EDIT_DURATION = String(UNIQUE);
 const DELETE_DURATION = String(UNIQUE + 1);
 
-/** Logs a run with an unmistakable duration so the assertions can find its row. */
+/**
+ * Logs a run with an unmistakable duration so the assertions can find its row.
+ *
+ * Waits only for the form to be left behind, deliberately not for `/dashboard`:
+ * CI runs against a migrated but unseeded database, where there is no plan, and
+ * Checkpoint 17 routes a plan-less user straight on to `/intake`. Asserting the
+ * destination would pin seeded state these tests do not otherwise need — what
+ * matters is that the submit went through, which the history row then proves.
+ */
 async function logRun(page: Page, distance: string, duration: string) {
   await page.goto("/log");
   await page.locator("#distanceMiles").fill(distance);
   await page.locator("#durationMin").fill(duration);
   await page.getByRole("button", { name: "Log session" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).not.toHaveURL(/\/log/);
 }
 
 test("a logged session can be corrected after the fact", async ({ page }) => {
