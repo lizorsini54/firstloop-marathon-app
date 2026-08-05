@@ -138,14 +138,4 @@ jobs:
           bun run --filter '@firstloop/db' db:deploy
 
       - name: Confirm the fixture survived
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -t -c "
-            SELECT CASE
-              WHEN (SELECT count(*) FROM \"User\" WHERE id = 'mig_user') = 1
-               AND (SELECT count(*) FROM \"TrainingPlan\" WHERE id = 'mig_plan') = 1
-               AND (SELECT count(*) FROM \"PlannedWorkout\" WHERE \"planId\" = 'mig_plan') = 2
-               AND (SELECT count(*) FROM \"SessionLog\" WHERE \"userId\" = 'mig_user') = 2
-               AND (SELECT \"plannedWorkoutId\" FROM \"SessionLog\" WHERE id = 'mig_log_linked') = 'mig_workout_run'
-              THEN 'fixture intact'
-              ELSE (SELECT 1/0)::text
-            END;"
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/scripts/migration-assert.sql
