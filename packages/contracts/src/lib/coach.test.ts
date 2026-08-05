@@ -95,8 +95,14 @@ describe("buildTrainingSnapshot", () => {
     });
 
     expect(snapshot.weeklyTotals.map((w) => w.weeksAgo)).toEqual([4, 3, 2, 1]);
-    expect(snapshot.weeklyTotals[0]).toMatchObject({ plannedMiles: 20, actualMiles: 18 });
-    expect(snapshot.weeklyTotals[3]).toMatchObject({ plannedMiles: 30, actualMiles: 31 });
+    expect(snapshot.weeklyTotals[0]).toMatchObject({
+      plannedLongRunMiles: 20,
+      actualLongRunMiles: 18,
+    });
+    expect(snapshot.weeklyTotals[3]).toMatchObject({
+      plannedLongRunMiles: 30,
+      actualLongRunMiles: 31,
+    });
   });
 
   test("excludes sessions older than the 14-day detail window from the completion counts", () => {
@@ -108,7 +114,48 @@ describe("buildTrainingSnapshot", () => {
     expect(snapshot.runsPlanned).toBe(0);
     expect(snapshot.runsCompleted).toBe(0);
     // Still counted in the four-week mileage trend.
-    expect(snapshot.weeklyTotals[1]?.actualMiles).toBe(5);
+    expect(snapshot.weeklyTotals[1]?.actualLongRunMiles).toBe(5);
+  });
+
+  // The Checkpoint 19 regression (#41). No fixture here had ever contained a
+  // planned run without a distance — `planned()` defaults to miles: 5 — so the
+  // planned and logged sides always happened to measure the same thing and the
+  // asymmetry never showed. In the real plan, easy and quality runs are
+  // prescribed by duration and carry no distance, while their logs carry a real
+  // one, which reported an on-plan runner as ~60% over.
+  test("a duration-prescribed run's logged distance does not inflate long-run mileage", () => {
+    const snapshot = snapshotOf({
+      planned: [
+        planned({ id: "long", date: daysAgo(3), miles: 9.7, quality: "long" }),
+        planned({ id: "easy1", date: daysAgo(5), miles: null, quality: "easy" }),
+        planned({ id: "easy2", date: daysAgo(6), miles: null, quality: "easy" }),
+      ],
+      logged: [
+        logged({ plannedWorkoutId: "long", date: daysAgo(3), miles: 9.7 }),
+        logged({ plannedWorkoutId: "easy1", date: daysAgo(5), miles: 3 }),
+        logged({ plannedWorkoutId: "easy2", date: daysAgo(6), miles: 2.9 }),
+      ],
+    });
+
+    const pastWeek = snapshot.weeklyTotals.find((w) => w.weeksAgo === 1);
+    expect(pastWeek).toMatchObject({ plannedLongRunMiles: 9.7, actualLongRunMiles: 9.7 });
+    // The bug: 9.7 + 3 + 2.9 reported against 9.7 planned.
+    expect(pastWeek?.actualLongRunMiles).not.toBe(15.6);
+    // Adherence is unaffected — all three runs were completed.
+    expect(snapshot.runsCompleted).toBe(3);
+    expect(snapshot.missedSessions).toEqual([]);
+  });
+
+  test("a log not linked to a planned session contributes no long-run mileage", () => {
+    const snapshot = snapshotOf({
+      planned: [planned({ id: "long", date: daysAgo(3), miles: 9.7, quality: "long" })],
+      logged: [logged({ plannedWorkoutId: null, date: daysAgo(3), miles: 9.7 })],
+    });
+
+    expect(snapshot.weeklyTotals.find((w) => w.weeksAgo === 1)).toMatchObject({
+      plannedLongRunMiles: 9.7,
+      actualLongRunMiles: 0,
+    });
   });
 
   test("tracks strength adherence separately from running", () => {
@@ -168,6 +215,23 @@ describe("renderSnapshot", () => {
 
     expect(rendered).toContain("Missed sessions in the last 14 days: none");
     expect(rendered).toContain("Average RPE across logged sessions: none logged");
+  });
+
+  // Pairing the numbers correctly isn't enough on its own — labelling them
+  // "weekly running mileage" invited the model to report them as total volume,
+  // which is how #41 reached the user as "you ran nearly double the planned
+  // mileage." The text the model sees has to say what the figures are.
+  test("names the mileage figures as long-run distance, not total volume", () => {
+    const rendered = renderSnapshot(
+      snapshotOf({
+        planned: [planned({ id: "long", date: daysAgo(3), miles: 9.7, quality: "long" })],
+        logged: [logged({ plannedWorkoutId: "long", date: daysAgo(3), miles: 9.7 })],
+      }),
+    );
+
+    expect(rendered).toContain("LONG-RUN distance");
+    expect(rendered).toContain("This is not total weekly volume");
+    expect(rendered).not.toContain("Weekly running mileage");
   });
 });
 
