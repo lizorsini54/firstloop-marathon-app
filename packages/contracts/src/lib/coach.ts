@@ -34,11 +34,20 @@ export interface LoggedItem {
   rpe: number;
 }
 
+/**
+ * Long-run distance on both sides, deliberately — not total training volume.
+ * Long runs are the only sessions plan-engine prescribes by distance; easy and
+ * quality runs are prescribed by duration and carry no planned mileage at all.
+ * Summing every logged run against a planned figure that only ever counted long
+ * runs compares two different quantities and reads as a large weekly overshoot,
+ * which is exactly what it did before Checkpoint 19. `getDashboard`'s chart
+ * makes the same restriction (`router.ts`) — this mirrors it.
+ */
 interface WeeklyTotals {
   /** 1 = the week just ended, 2 = the week before it, and so on. */
   weeksAgo: number;
-  plannedMiles: number;
-  actualMiles: number;
+  plannedLongRunMiles: number;
+  actualLongRunMiles: number;
 }
 
 interface MissedSession {
@@ -96,6 +105,16 @@ export function buildTrainingSnapshot(args: {
   const inWindow = <T extends { date: Date }>(rows: T[], from: Date) =>
     rows.filter((r) => r.date >= from && r.date <= now);
 
+  // The planned sessions that actually carry a distance — long runs. A logged
+  // run only counts toward the actual side if it is linked to one of these, so
+  // both sides measure the same thing. Same set-based restriction the
+  // dashboard chart uses.
+  const distancePlannedIds = new Set(
+    planned.filter((p) => (p.miles ?? 0) > 0).map((p) => p.id),
+  );
+  const countsTowardLongRunMiles = (l: LoggedItem) =>
+    l.plannedWorkoutId !== null && distancePlannedIds.has(l.plannedWorkoutId);
+
   const weeklyTotals: WeeklyTotals[] = [];
   for (let weeksAgo = TREND_WEEKS; weeksAgo >= 1; weeksAgo--) {
     const start = new Date(now.getTime() - weeksAgo * 7 * DAY_MS);
@@ -103,10 +122,14 @@ export function buildTrainingSnapshot(args: {
     const within = <T extends { date: Date }>(r: T) => r.date >= start && r.date < end;
     weeklyTotals.push({
       weeksAgo,
-      plannedMiles: round1(
+      plannedLongRunMiles: round1(
         planned.filter(within).reduce((sum, p) => sum + (p.miles ?? 0), 0),
       ),
-      actualMiles: round1(logged.filter(within).reduce((sum, l) => sum + (l.miles ?? 0), 0)),
+      actualLongRunMiles: round1(
+        logged
+          .filter((l) => within(l) && countsTowardLongRunMiles(l))
+          .reduce((sum, l) => sum + (l.miles ?? 0), 0),
+      ),
     });
   }
 
@@ -168,13 +191,17 @@ export function renderSnapshot(snapshot: TrainingSnapshot): string {
     `Phase: ${snapshot.phase} (week ${String(snapshot.currentWeek)} of ${String(snapshot.totalWeeks)})`,
     `Days until race: ${String(snapshot.daysToRace)}`,
     "",
-    "Weekly running mileage (planned vs actual, most recent week last):",
+    "Weekly LONG-RUN distance, planned vs logged (most recent week last).",
+    "This is not total weekly volume: easy and quality runs are prescribed by",
+    "duration rather than distance, so they are excluded from both sides. Do not",
+    "describe these figures as total mileage or infer overall volume from them —",
+    "for whether the runner is keeping up, use the completion counts below.",
   ];
 
   for (const week of snapshot.weeklyTotals) {
     const label = week.weeksAgo === 1 ? "past week" : `${String(week.weeksAgo)} weeks ago`;
     lines.push(
-      `  ${label}: planned ${String(week.plannedMiles)}mi, actual ${String(week.actualMiles)}mi`,
+      `  ${label}: planned ${String(week.plannedLongRunMiles)}mi, logged ${String(week.actualLongRunMiles)}mi`,
     );
   }
 
