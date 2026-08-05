@@ -26,6 +26,23 @@ export const logSessionOutputSchema = z.object({
   sessionLogId: z.string(),
 });
 
+/**
+ * Extends the create shape rather than restating it, so the two write paths
+ * cannot drift in what they accept. Anything `logSession` takes, an edit takes.
+ */
+export const updateSessionLogInputSchema = logSessionInputSchema.extend({
+  sessionLogId: z.string(),
+});
+
+export const deleteSessionLogInputSchema = z.object({
+  sessionLogId: z.string(),
+});
+
+export const deleteSessionLogOutputSchema = z.object({
+  deletedSessionLogId: z.string(),
+});
+
 export type LogSessionInput = z.infer<typeof logSessionInputSchema>;
 export type LogSessionOutput = z.infer<typeof logSessionOutputSchema>;
+export type UpdateSessionLogInput = z.infer<typeof updateSessionLogInputSchema>;
 export type SetLogEntry = z.infer<typeof setLogEntrySchema>;

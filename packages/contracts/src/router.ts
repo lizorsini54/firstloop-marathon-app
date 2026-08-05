@@ -1,5 +1,7 @@
-import { prisma } from "@firstloop/db";
-import type { Prisma } from "@firstloop/db";
+// `Prisma` is a value import, not type-only: clearing a Json column needs
+// `Prisma.DbNull` at runtime. Server-side only — `apps/web` never imports the
+// router as a value, which the bundle grep in DECISIONS.md Checkpoint 4 pins.
+import { Prisma, prisma } from "@firstloop/db";
 import { ORPCError } from "@orpc/server";
 import {
   checkFeasibility,
@@ -37,7 +39,13 @@ import { getPlanOverviewOutputSchema } from "./schemas/overview";
 import { pingInputSchema, pingOutputSchema } from "./schemas/ping";
 import { createPlanInputSchema, createPlanOutputSchema } from "./schemas/plan";
 import { getRunningProgressOutputSchema } from "./schemas/progress";
-import { logSessionInputSchema, logSessionOutputSchema } from "./schemas/session";
+import {
+  deleteSessionLogInputSchema,
+  deleteSessionLogOutputSchema,
+  logSessionInputSchema,
+  logSessionOutputSchema,
+  updateSessionLogInputSchema,
+} from "./schemas/session";
 import type { SetLogEntry } from "./schemas/session";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -246,41 +254,77 @@ const createPlan = protectedProcedure
     return { planId: plan.id, totalWeeks, warnings };
   });
 
+/**
+ * Resolves the planned-workout link for a session write (Checkpoint 25, #56).
+ *
+ * A link is a claim that *this* session is the one the plan asked for, and
+ * adherence is computed entirely from it — `loggedPlanIds` decides what counts
+ * as missed without re-checking the type — so it is validated here rather than
+ * trusted from the client.
+ *
+ * The two failure modes are handled differently on purpose. A workout that
+ * isn't the caller's has no correct interpretation, so it is rejected. A type
+ * mismatch does have one: the runner did something other than what was planned,
+ * which is a standalone session, and the planned one stays legitimately
+ * unlogged. Rejecting that would lose a real entry over a recoverable mismatch.
+ * Warned rather than swallowed, so a client that starts sending mismatches is
+ * visible instead of absorbed.
+ *
+ * Shared by `logSession` and `updateSessionLog` deliberately. Update is a second
+ * write path to the same field, and a duplicated copy of this rule is exactly
+ * how #56 would come back — through a door no persona review has reason to open.
+ */
+async function resolvePlannedWorkoutLink(
+  plannedWorkoutId: string | undefined,
+  loggedType: string,
+  userId: string,
+): Promise<string | undefined> {
+  if (plannedWorkoutId === undefined) return undefined;
+
+  const planned = await prisma.plannedWorkout.findUnique({
+    where: { id: plannedWorkoutId },
+    select: { type: true, plan: { select: { userId: true } } },
+  });
+
+  if (!planned || planned.plan.userId !== userId) {
+    throw new ORPCError("NOT_FOUND", { message: "Planned workout not found" });
+  }
+
+  if (planned.type !== loggedType) {
+    console.warn(
+      `Dropping plannedWorkoutId ${plannedWorkoutId}: logged ${loggedType} against a planned ${planned.type}`,
+    );
+    return undefined;
+  }
+
+  return plannedWorkoutId;
+}
+
+/** The caller's own log, or a 404 — ownership is proven, never inferred from an unguessable id. */
+async function requireOwnedSessionLog(sessionLogId: string, userId: string) {
+  const log = await prisma.sessionLog.findUnique({
+    where: { id: sessionLogId },
+    select: { id: true, userId: true },
+  });
+
+  if (!log || log.userId !== userId) {
+    throw new ORPCError("NOT_FOUND", { message: "Session log not found" });
+  }
+
+  return log;
+}
+
 const logSession = protectedProcedure
   .input(logSessionInputSchema)
   .output(logSessionOutputSchema)
   .handler(async ({ input, context }) => {
     const user = await getOrCreateUser(context.auth.userId);
 
-    // A link to a planned workout is a claim that *this* session is the one the
-    // plan asked for, and adherence is computed entirely from it — so it gets
-    // validated here rather than trusted from the client.
-    //
-    // The two failure modes are handled differently on purpose. A workout that
-    // isn't the caller's has no correct interpretation, so it's rejected. A
-    // type mismatch does have one: the runner did something other than what was
-    // planned, which is a standalone session, and the planned one stays
-    // legitimately unlogged. Rejecting that would lose a real entry over a
-    // recoverable mismatch. Warned rather than swallowed, so a client that
-    // starts sending mismatches is visible instead of absorbed.
-    let plannedWorkoutId = input.plannedWorkoutId;
-    if (plannedWorkoutId !== undefined) {
-      const planned = await prisma.plannedWorkout.findUnique({
-        where: { id: plannedWorkoutId },
-        select: { type: true, plan: { select: { userId: true } } },
-      });
-
-      if (!planned || planned.plan.userId !== user.id) {
-        throw new ORPCError("NOT_FOUND", { message: "Planned workout not found" });
-      }
-
-      if (planned.type !== input.type) {
-        console.warn(
-          `Dropping plannedWorkoutId ${plannedWorkoutId}: logged ${input.type} against a planned ${planned.type}`,
-        );
-        plannedWorkoutId = undefined;
-      }
-    }
+    const plannedWorkoutId = await resolvePlannedWorkoutLink(
+      input.plannedWorkoutId,
+      input.type,
+      user.id,
+    );
 
     const created = await prisma.sessionLog.create({
       data: {
@@ -297,6 +341,54 @@ const logSession = protectedProcedure
     });
 
     return { sessionLogId: created.id };
+  });
+
+const updateSessionLog = protectedProcedure
+  .input(updateSessionLogInputSchema)
+  .output(logSessionOutputSchema)
+  .handler(async ({ input, context }) => {
+    const user = await getOrCreateUser(context.auth.userId);
+    await requireOwnedSessionLog(input.sessionLogId, user.id);
+
+    // Re-resolved on every edit, not carried over. Changing the type of a
+    // linked session has to detach it for the same reason creating one does —
+    // this is a second write path to the field #56 was about.
+    const plannedWorkoutId = await resolvePlannedWorkoutLink(
+      input.plannedWorkoutId,
+      input.type,
+      user.id,
+    );
+
+    const updated = await prisma.sessionLog.update({
+      where: { id: input.sessionLogId },
+      data: {
+        date: input.date,
+        type: input.type,
+        // Written unconditionally, including to null: an edit that clears a
+        // distance has to actually clear it, and `undefined` would leave the
+        // old value in place.
+        distanceMiles: input.distanceMiles ?? null,
+        durationMin: input.durationMin,
+        rpe: input.rpe,
+        notes: input.notes ?? null,
+        plannedWorkoutId: plannedWorkoutId ?? null,
+        setLog: input.setLog ?? Prisma.DbNull,
+      },
+    });
+
+    return { sessionLogId: updated.id };
+  });
+
+const deleteSessionLog = protectedProcedure
+  .input(deleteSessionLogInputSchema)
+  .output(deleteSessionLogOutputSchema)
+  .handler(async ({ input, context }) => {
+    const user = await getOrCreateUser(context.auth.userId);
+    await requireOwnedSessionLog(input.sessionLogId, user.id);
+
+    await prisma.sessionLog.delete({ where: { id: input.sessionLogId } });
+
+    return { deletedSessionLogId: input.sessionLogId };
   });
 
 const getSessionHistory = protectedProcedure
@@ -634,6 +726,8 @@ export const router = {
   me,
   createPlan,
   logSession,
+  updateSessionLog,
+  deleteSessionLog,
   getDashboard,
   getSessionHistory,
   getRunningProgress,
