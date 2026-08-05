@@ -256,16 +256,57 @@ const COACH_OUTPUT_SCHEMA = {
  */
 export type CoachCompletion = (args: { system: string; user: string }) => Promise<string>;
 
+/**
+ * Thrown when the model didn't answer inside `COACH_TIMEOUT_MS`. Distinct from
+ * a generic failure on purpose: retrying a timeout often works, retrying an
+ * expired key never does, and the card tells the runner different things.
+ */
+export class CoachTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Coach did not respond within ${String(timeoutMs)}ms`);
+    this.name = "CoachTimeoutError";
+  }
+}
+
+/**
+ * Observed latency is ~11s typically, with a tail past 30s. 25s sits above the
+ * normal case with real headroom, under Playwright's 30s default so the e2e
+ * suite always settles, and is about as long as anyone should wait for a
+ * comment on their own training.
+ */
+const COACH_TIMEOUT_MS = 25_000;
+
 export async function getCoachFeedback(
   snapshot: TrainingSnapshot,
   complete: CoachCompletion,
+  options: { timeoutMs?: number } = {},
 ): Promise<CoachResponse> {
-  const raw = await complete({
-    system: COACH_SYSTEM_PROMPT,
-    user: renderSnapshot(snapshot),
+  const timeoutMs = options.timeoutMs ?? COACH_TIMEOUT_MS;
+
+  // A race, not a cancellation: this stops *waiting* on the upstream call but
+  // does not abort it, so a slow request runs to completion and its result is
+  // discarded. Aborting properly would mean threading an AbortSignal through
+  // CoachCompletion — widening the seam every test has to satisfy — for one
+  // low-volume endpoint. See DECISIONS.md, Checkpoint 20.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new CoachTimeoutError(timeoutMs));
+    }, timeoutMs);
   });
 
-  return coachResponseSchema.parse(JSON.parse(raw));
+  try {
+    const raw = await Promise.race([
+      complete({ system: COACH_SYSTEM_PROMPT, user: renderSnapshot(snapshot) }),
+      deadline,
+    ]);
+
+    return coachResponseSchema.parse(JSON.parse(raw));
+  } finally {
+    // Without this the pending timer keeps the process alive after a fast
+    // success — which would hang `bun test` rather than fail it.
+    clearTimeout(timer);
+  }
 }
 
 /**

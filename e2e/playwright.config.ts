@@ -5,6 +5,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: "list",
+  // Per-test budget. Distinct from `webServer.timeout` below, which only covers
+  // server startup — without this, Playwright's 30s default applied and quietly
+  // capped assertions that asked for longer (the coach test declares 60s and
+  // never got it). See DECISIONS.md, Checkpoint 20.
+  timeout: 60_000,
   globalSetup: "./global-setup.ts",
   use: {
     baseURL: "http://localhost:5173",
