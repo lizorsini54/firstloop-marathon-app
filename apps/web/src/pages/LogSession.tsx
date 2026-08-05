@@ -31,7 +31,23 @@ type LogSessionNavState = {
   plannedWorkoutId?: string;
   type?: WorkoutType;
   prescription?: LinkedPrescription;
+  /**
+   * Present when History sent us here to edit an existing entry. The same form
+   * serves both jobs deliberately — it already handles every field including
+   * the exercise rows, and a separate edit surface would mean rebuilding that.
+   */
+  editing?: {
+    sessionLogId: string;
+    date: string;
+    distanceMiles: number | null;
+    durationMin: number;
+    rpe: number;
+    notes: string | null;
+    setLog: LinkedSetLogEntry[] | null;
+  };
 };
+
+type LinkedSetLogEntry = { exercise: string; sets: { reps: number; weightLbs: number }[] };
 
 type SetEntry = { reps: string; weightLbs: string };
 
@@ -88,6 +104,15 @@ function initialExerciseLogs(exercises: LinkedExercise[]): ExerciseLog[] {
   }));
 }
 
+function loggedExerciseRows(entries: LinkedSetLogEntry[]): ExerciseLog[] {
+  return entries.map((e) => ({
+    id: makeExerciseId(),
+    exercise: e.exercise,
+    sets: e.sets.map((set) => ({ reps: String(set.reps), weightLbs: String(set.weightLbs) })),
+    prescribed: false,
+  }));
+}
+
 function blankExerciseLog(): ExerciseLog {
   return {
     id: makeExerciseId(),
@@ -111,21 +136,32 @@ export function LogSession() {
   //  - showsDistance:   meaningless for a lift or a rest day
   //  - isLift:          the only thing that should gate the exercise section
   const arrivedFromPlan = Boolean(navState?.plannedWorkoutId);
+  const editing = navState?.editing;
 
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(editing?.date ?? today);
   const [type, setType] = useState<WorkoutType>(navState?.type ?? "RUN");
-  const [distanceMiles, setDistanceMiles] = useState("");
+  const [distanceMiles, setDistanceMiles] = useState(
+    editing?.distanceMiles != null ? String(editing.distanceMiles) : "",
+  );
   // Arriving from a dashboard row, the plan already told the runner how long
   // this session was meant to be — starting the field empty just asks them to
   // retype it. Still fully editable; it's what they planned, not what they did.
   const [durationMin, setDurationMin] = useState(
-    navState?.prescription?.durationMin ? String(navState.prescription.durationMin) : "",
+    editing
+      ? String(editing.durationMin)
+      : navState?.prescription?.durationMin
+        ? String(navState.prescription.durationMin)
+        : "",
   );
-  const [rpe, setRpe] = useState("5");
-  const [notes, setNotes] = useState("");
-  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>(
-    linkedExercises ? initialExerciseLogs(linkedExercises) : [],
-  );
+  const [rpe, setRpe] = useState(editing ? String(editing.rpe) : "5");
+  const [notes, setNotes] = useState(editing?.notes ?? "");
+  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>(() => {
+    // An edited session's exercises are what was *done*, so they come back as
+    // plain rows with no prescription attached — there is no setsReps or note
+    // to show for something already recorded.
+    if (editing?.setLog) return loggedExerciseRows(editing.setLog);
+    return linkedExercises ? initialExerciseLogs(linkedExercises) : [];
+  });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ status: "idle" });
 
@@ -225,8 +261,13 @@ export function LogSession() {
     setFieldErrors({});
     setState({ status: "submitting" });
     try {
-      await orpc.logSession(result.data);
-      void navigate("/dashboard");
+      if (editing) {
+        await orpc.updateSessionLog({ ...result.data, sessionLogId: editing.sessionLogId });
+        void navigate("/history");
+      } else {
+        await orpc.logSession(result.data);
+        void navigate("/dashboard");
+      }
     } catch (error) {
       setState({
         status: "error",
@@ -240,10 +281,16 @@ export function LogSession() {
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-2xl font-bold uppercase tracking-tight">
-            {(arrivedFromPlan ? navState?.prescription?.displayName : null) ?? "Log a session"}
+            {editing
+              ? "Edit session"
+              : ((arrivedFromPlan ? navState?.prescription?.displayName : null) ?? "Log a session")}
           </CardTitle>
           <CardDescription>
-            {isLift ? "Log your sets for this session." : "What did you actually do out there?"}
+            {editing
+              ? "Fix anything that isn't right, then save."
+              : isLift
+                ? "Log your sets for this session."
+                : "What did you actually do out there?"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -457,7 +504,13 @@ export function LogSession() {
             )}
 
             <Button type="submit" disabled={state.status === "submitting"}>
-              {state.status === "submitting" ? "Logging…" : "Log session"}
+              {state.status === "submitting"
+                ? editing
+                  ? "Saving…"
+                  : "Logging…"
+                : editing
+                  ? "Save changes"
+                  : "Log session"}
             </Button>
           </form>
         </CardContent>

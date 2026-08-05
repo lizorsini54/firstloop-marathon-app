@@ -442,3 +442,149 @@ describe("injury-aware strength scheduling", () => {
     expect(dashboard.plan?.injuryWarning).toContain("Knee");
   });
 });
+
+/**
+ * Checkpoint 27 (#10, session half). `updateSessionLog` is a *second* write
+ * path to `plannedWorkoutId`, the field Checkpoint 25 locked down. The
+ * validation is shared rather than duplicated, and these assert it through the
+ * update path directly rather than trusting that the shared call is reached.
+ */
+describe("updateSessionLog / deleteSessionLog", () => {
+  async function planAndLog(userId: string, type: "RUN" | "LIFT" = "RUN") {
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 3,
+        strengthMode: "program",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId } } },
+    );
+    const user = await prisma.user.findFirstOrThrow({ where: { clerkId: userId } });
+    const planned = await prisma.plannedWorkout.findFirstOrThrow({
+      where: { plan: { userId: user.id }, type },
+    });
+    const { sessionLogId } = await call(
+      router.logSession,
+      {
+        date: new Date(),
+        type,
+        durationMin: 40,
+        rpe: 5,
+        ...(type === "RUN" ? { distanceMiles: 4 } : {}),
+        plannedWorkoutId: planned.id,
+      },
+      { context: { auth: { userId } } },
+    );
+    return { sessionLogId, planned, user };
+  }
+
+  test("edits the fields and keeps a link whose type still matches", async () => {
+    const { sessionLogId, planned } = await planAndLog("clerk_test_edit_ok");
+
+    await call(
+      router.updateSessionLog,
+      {
+        sessionLogId,
+        date: new Date(),
+        type: "RUN",
+        distanceMiles: 6.5,
+        durationMin: 61,
+        rpe: 8,
+        notes: "corrected",
+        plannedWorkoutId: planned.id,
+      },
+      { context: { auth: { userId: "clerk_test_edit_ok" } } },
+    );
+
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.distanceMiles).toBe(6.5);
+    expect(log.durationMin).toBe(61);
+    expect(log.rpe).toBe(8);
+    expect(log.notes).toBe("corrected");
+    expect(log.plannedWorkoutId).toBe(planned.id);
+  });
+
+  test("drops the link when an edit changes the type away from the planned one", async () => {
+    const { sessionLogId, planned } = await planAndLog("clerk_test_edit_detach", "LIFT");
+
+    await call(
+      router.updateSessionLog,
+      {
+        sessionLogId,
+        date: new Date(),
+        type: "RUN",
+        distanceMiles: 3.1,
+        durationMin: 31,
+        rpe: 5,
+        plannedWorkoutId: planned.id,
+      },
+      { context: { auth: { userId: "clerk_test_edit_detach" } } },
+    );
+
+    // The entry survives as a standalone run; the planned lift goes back to
+    // being legitimately unlogged. Same rule as #56, reached through edit.
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.type).toBe("RUN");
+    expect(log.plannedWorkoutId).toBeNull();
+  });
+
+  test("clears a distance when an edit removes it", async () => {
+    const { sessionLogId } = await planAndLog("clerk_test_edit_clear");
+
+    await call(
+      router.updateSessionLog,
+      { sessionLogId, date: new Date(), type: "RUN", durationMin: 30, rpe: 4 },
+      { context: { auth: { userId: "clerk_test_edit_clear" } } },
+    );
+
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.distanceMiles).toBeNull();
+    expect(log.notes).toBeNull();
+  });
+
+  test("refuses to edit someone else's session", async () => {
+    const { sessionLogId } = await planAndLog("clerk_test_edit_owner");
+
+    expect(
+      call(
+        router.updateSessionLog,
+        { sessionLogId, date: new Date(), type: "RUN", durationMin: 10, rpe: 1 },
+        { context: { auth: { userId: "clerk_test_edit_stranger" } } },
+      ),
+    ).rejects.toThrow();
+
+    const log = await prisma.sessionLog.findUniqueOrThrow({ where: { id: sessionLogId } });
+    expect(log.durationMin).toBe(40);
+  });
+
+  test("deletes the row outright", async () => {
+    const { sessionLogId } = await planAndLog("clerk_test_delete_ok");
+
+    await call(
+      router.deleteSessionLog,
+      { sessionLogId },
+      { context: { auth: { userId: "clerk_test_delete_ok" } } },
+    );
+
+    expect(await prisma.sessionLog.findUnique({ where: { id: sessionLogId } })).toBeNull();
+  });
+
+  test("refuses to delete someone else's session", async () => {
+    const { sessionLogId } = await planAndLog("clerk_test_delete_owner");
+
+    expect(
+      call(
+        router.deleteSessionLog,
+        { sessionLogId },
+        { context: { auth: { userId: "clerk_test_delete_stranger" } } },
+      ),
+    ).rejects.toThrow();
+
+    expect(await prisma.sessionLog.findUnique({ where: { id: sessionLogId } })).not.toBeNull();
+  });
+});
