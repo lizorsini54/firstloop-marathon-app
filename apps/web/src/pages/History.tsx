@@ -108,7 +108,7 @@ export function History() {
                 <span>{titleCase(s.type)}</span>
                 <span className="text-right font-mono text-muted-foreground">
                   {s.setLog && s.setLog.length > 0
-                    ? `${s.setLog.length} exercises logged · RPE ${s.rpe}`
+                    ? `${s.setLog.length} exercise${s.setLog.length === 1 ? "" : "s"} logged · RPE ${s.rpe}`
                     : `${s.distanceMiles ? `${s.distanceMiles}mi · ` : ""}${s.durationMin}min · RPE ${s.rpe}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">

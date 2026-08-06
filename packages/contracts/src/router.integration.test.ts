@@ -588,3 +588,105 @@ describe("updateSessionLog / deleteSessionLog", () => {
     expect(await prisma.sessionLog.findUnique({ where: { id: sessionLogId } })).not.toBeNull();
   });
 });
+
+/**
+ * Checkpoint 28 (#46). The planned-vs-logged chart plotted the *current* week
+ * as 0 while the tile beside it read "the week's still open" — the same fact
+ * told two ways on one screen. Checkpoint 16 had nulled future weeks for the
+ * same reason and missed the in-progress one.
+ *
+ * The third test is the important one: a past week with nothing logged is a
+ * real 0, and that is the adherence signal the chart exists for. Fixing #46 by
+ * nulling anything unlogged would quietly undo it.
+ */
+describe("getDashboard — weekly mileage history", () => {
+  async function planFor(userId: string) {
+    await call(
+      router.createPlan,
+      {
+        raceDate: new Date("2027-06-01"),
+        currentWeeklyMileage: 20,
+        runningExperience: "has_finished_one",
+        runningDaysPerWeek: 3,
+        strengthMode: "none",
+        bikeDaysPerWeek: 0,
+        injuryFlags: [],
+      },
+      { context: { auth: { userId } } },
+    );
+    return call(router.getDashboard, undefined, { context: { auth: { userId } } });
+  }
+
+  test("the current week reads as null while nothing is logged in it", async () => {
+    const dashboard = await planFor("clerk_test_week_open");
+    const current = dashboard.plan?.currentWeek ?? 1;
+
+    const week = dashboard.weeklyMileageHistory.find((w) => w.weekNumber === current);
+    expect(week?.actualMiles).toBeNull();
+  });
+
+  test("the current week reports its real figure once a long run is logged", async () => {
+    const userId = "clerk_test_week_logged";
+    await planFor(userId);
+
+    const user = await prisma.user.findFirstOrThrow({ where: { clerkId: userId } });
+    // The chart counts only logs linked to a distance-prescribed workout —
+    // long runs — which is the Checkpoint 19 pairing rule.
+    const longRun = await prisma.plannedWorkout.findFirstOrThrow({
+      where: { plan: { userId: user.id }, type: "RUN", weekNumber: 1 },
+      orderBy: { day: "desc" },
+    });
+
+    await call(
+      router.logSession,
+      {
+        date: new Date(),
+        type: "RUN",
+        distanceMiles: 7.5,
+        durationMin: 70,
+        rpe: 6,
+        plannedWorkoutId: longRun.id,
+      },
+      { context: { auth: { userId } } },
+    );
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId } },
+    });
+    const current = dashboard.plan?.currentWeek ?? 1;
+    const week = dashboard.weeklyMileageHistory.find((w) => w.weekNumber === current);
+    expect(week?.actualMiles).toBe(7.5);
+  });
+
+  test("future weeks stay null, and unlogged past weeks stay a real 0", async () => {
+    const userId = "clerk_test_week_future";
+    await planFor(userId);
+
+    // `createPlan` always starts a plan today, so through the API alone the
+    // current week is always 1 and there are no past weeks to inspect — an
+    // assertion over them would pass vacuously. Backdating the start date is
+    // the only way to give this test the case it exists for.
+    const user = await prisma.user.findFirstOrThrow({ where: { clerkId: userId } });
+    const plan = await prisma.trainingPlan.findFirstOrThrow({ where: { userId: user.id } });
+    await prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: { startDate: new Date(plan.startDate.getTime() - 21 * 24 * 60 * 60 * 1000) },
+    });
+
+    const dashboard = await call(router.getDashboard, undefined, {
+      context: { auth: { userId } },
+    });
+    const current = dashboard.plan?.currentWeek ?? 1;
+    expect(current).toBeGreaterThan(1);
+
+    const future = dashboard.weeklyMileageHistory.filter((w) => w.weekNumber > current);
+    expect(future.length).toBeGreaterThan(0);
+    expect(future.every((w) => w.actualMiles === null)).toBe(true);
+
+    // The assertion this test exists for: nothing was logged in those weeks,
+    // and they are over, so they read as a real 0 rather than "no data".
+    const past = dashboard.weeklyMileageHistory.filter((w) => w.weekNumber < current);
+    expect(past.length).toBeGreaterThan(0);
+    expect(past.every((w) => w.actualMiles === 0)).toBe(true);
+  });
+});
