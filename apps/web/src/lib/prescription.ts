@@ -4,7 +4,15 @@ export function describePrescription(
   p: DashboardOutput["plannedWorkouts"][number]["prescription"],
 ): string {
   if (p.exercises && p.exercises.length > 0) {
-    const parts = [p.displayName, p.block ? `${p.block} block` : undefined, `${p.exercises.length} exercises`];
+    // "strength block", not just "block": the running phase in the header
+    // above uses the same words (a BASE-phase week can contain a Peak *lifting*
+    // block), and unqualified it reads as the app contradicting itself. See
+    // DECISIONS.md, Checkpoint 28 (#47).
+    const parts = [
+      p.displayName,
+      p.block ? `${p.block} strength block` : undefined,
+      `${p.exercises.length} exercises`,
+    ];
     return parts.filter(Boolean).join(" · ");
   }
   if (p.displayName) {

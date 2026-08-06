@@ -13,6 +13,14 @@ import { z } from "zod";
  *   is misconfigured and nothing failed — it was simply slow. The fix is to try
  *   again, which is why it isn't folded into "failed": that copy sends the
  *   reader to the server log for a cause that isn't there.
+ * - "no_plan": the caller has no training plan, so there is nothing to review.
+ *   Reachable through this API but **not currently through the UI**: `CoachCard`
+ *   renders only on the dashboard, and since Checkpoint 17 the dashboard
+ *   redirects to `/intake` whenever `plan` is null. Kept rather than removed —
+ *   dropping it would make this procedure lie to a plan-less caller, and the
+ *   card's branch is retained so a routing change can't produce an unhandled
+ *   state. Flagged as dead in the second persona review (#60); it isn't, and
+ *   Checkpoint 28 recorded why instead of deleting it.
  *
  * Collapsing these into one state actively misleads whoever is debugging:
  * "the coach isn't configured" is the wrong thing to tell someone who just

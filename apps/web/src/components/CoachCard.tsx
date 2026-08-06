@@ -101,6 +101,11 @@ function CoachBody({ state }: { state: CoachState }) {
     );
   }
 
+  // Not reachable today: this card renders only on the dashboard, and since
+  // Checkpoint 17 the dashboard redirects to /intake whenever `plan` is null,
+  // so a plan-less user never gets here. Kept deliberately — the server does
+  // return this status, and removing the branch would leave it unhandled the
+  // moment that routing changes. See DECISIONS.md, Checkpoint 28 (#60).
   if (state.data.status === "no_plan") {
     return (
       <p className="text-sm text-muted-foreground">

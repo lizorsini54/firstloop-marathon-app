@@ -553,11 +553,20 @@ const getDashboard = protectedProcedure
       return {
         weekNumber,
         plannedMiles: plannedMilesByWeek.get(weekNumber) ?? 0,
-        // Weeks past the current one haven't happened, so they have no actual
-        // to report — null rather than 0, which would draw the whole remaining
-        // plan as missed training.
+        // Three cases, not two.
+        //
+        //  - Future weeks haven't happened: null, or the whole remaining plan
+        //    draws as missed training (Checkpoint 16).
+        //  - The current week is *in progress*: null when nothing is logged
+        //    yet, because a 0 there reads as a missed week while the tile
+        //    beside it says "the week's still open" — the same fact, told two
+        //    ways on one screen (#46).
+        //  - A past week with nothing logged is a real 0. That is the
+        //    adherence signal the chart exists for, and it must survive this.
         actualMiles:
-          weekNumber > currentWeek ? null : (actualMilesByWeek.get(weekNumber) ?? 0),
+          weekNumber > currentWeek
+            ? null
+            : (actualMilesByWeek.get(weekNumber) ?? (weekNumber === currentWeek ? null : 0)),
       };
     });
 
